@@ -47,6 +47,7 @@ func (client *APIClient) StartMonitoring() {
 func (client *APIClient) StopMonitoring() {
 	log.Println("Stopping wsMonitor...")
 	client.control <- 0
+	client.control <- 0
 
 }
 
@@ -54,14 +55,13 @@ func wsMonitor(connection *websocket.Conn, token string, control chan int, outpu
 	//set up the message pump
 	rawMessageChannel := make(chan map[string]interface{}, 10)
 	lastPushCheck := time.Now()
-	go messagePump(connection, rawMessageChannel)
+	go messagePump(connection, rawMessageChannel, control)
 	for {
 
 		select {
 		case <-control:
 			{
 				log.Println("wsMonitor Terminated")
-				connection.Close()
 				return
 			}
 		case message := <-rawMessageChannel:
@@ -74,7 +74,6 @@ func wsMonitor(connection *websocket.Conn, token string, control chan int, outpu
 					log.Println("Got a tickle push, fetching body/bodies...")
 					go getPushesSince(lastPushCheck, token, output)
 					lastPushCheck = time.Now()
-
 				} else {
 					log.Println("Got a nop message, ignoring")
 				}
@@ -85,17 +84,24 @@ func wsMonitor(connection *websocket.Conn, token string, control chan int, outpu
 
 }
 
-func messagePump(conn *websocket.Conn, messageChannel chan map[string]interface{}) {
+func messagePump(conn *websocket.Conn, messageChannel chan map[string]interface{}, control chan int) {
 	messageMap := make(map[string]interface{})
 	for {
-		err := conn.ReadJSON(&messageMap)
-		log.Println("Parsing message")
-		if err != nil {
-			log.Println("Error while parsing message")
-			conn.Close()
-			log.Fatal(err.Error())
+		select {
+		case <-control:
+			{
+				log.Println("Message Pump Terminated")
+				conn.Close()
+				return
+			}
+		default:
+			err := conn.ReadJSON(&messageMap)
+			log.Println("Parsing message")
+			if err != nil {
+				log.Println("Error while parsing message" + err.Error())
+			}
+			messageChannel <- messageMap
 		}
-		messageChannel <- messageMap
 	}
 }
 
@@ -106,30 +112,42 @@ func getPushesSince(since time.Time, token string, output chan string) {
 	log.Println(requestUrl)
 	req, err := http.NewRequest("GET", requestUrl, nil)
 	if err != nil {
-		log.Fatal("Error constructing API request:" + err.Error())
+		log.Println("Error constructing API request:" + err.Error())
+		return
 
 	}
 	req.Header.Add("Access-Token", token)
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Fatal("Error sending API request:" + err.Error())
+		log.Println("Error sending API request:" + err.Error())
+		return
 	}
 	defer resp.Body.Close()
 
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal("Error reading JSON response:" + err.Error())
+		log.Println("Error reading JSON response:" + err.Error())
+		return
 	}
 
 	responseStruct := make(map[string][]map[string]interface{})
 
 	err = json.Unmarshal(response, &responseStruct)
 	if err != nil {
-		log.Fatal("Error unmarshalling JSON response:" + err.Error())
+		log.Println("Error unmarshalling JSON response:" + err.Error())
+		return
 	}
 	log.Println(responseStruct)
 	for _, message := range responseStruct["pushes"] {
-		log.Println(message["body"].(string))
-		output <- message["body"].(string)
+		body, ok := message["body"].(string)
+		if !ok  {
+			messageId, ok :=message["iden"].(string)
+			if !ok {
+				log.Println("Got a malformed push, ignoring")
+			}
+			log.Println("Message " + messageId + " contains no body, ignoring")
+		}else {
+			output <- body
+		}
 	}
 }

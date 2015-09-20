@@ -26,7 +26,7 @@ func NewDisplay(pinout []int, blPolarity bool) *SharedDisplay {
 
 func logErrorandExit(message string, err error) {
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal(message + err.Error())
 	}
 }
 
@@ -63,10 +63,15 @@ func (display *SharedDisplay) displaySingleFrame(bytes []byte, duration time.Dur
 
 //DisplayMessage shows the given message on the display. The message is split in pages if needed (no scrolling is used)
 //In general, only strings that can be mapped onto ASCII can be displayed correctly.
-func (display *SharedDisplay) DisplayMessage(message string, duration time.Duration) {
+func (display *SharedDisplay) DisplayMessage(message string, duration time.Duration, flash bool) {
 	display.mutex.Lock()
 	err := display.driver.Clear()
 	logErrorandExit("Cannot clear LCD:", err)
+
+	if flash{
+		err = display.driver.BacklightOn()
+		logErrorandExit("Failed while flashing display", err)
+	}
 
 	bytes := []byte(message)
 
@@ -82,6 +87,11 @@ func (display *SharedDisplay) DisplayMessage(message string, duration time.Durat
 		}
 		display.displaySingleFrame(bytes[i*32:rightBound], time.Duration(frametime))
 	}
+
+	if flash {
+		err = display.driver.BacklightOff()
+		logErrorandExit("Failed while flashing display", err)
+	}
 	display.mutex.Unlock()
 }
 
@@ -89,10 +99,10 @@ func (display *SharedDisplay) DisplayMessage(message string, duration time.Durat
 func (display *SharedDisplay) FlashDisplay(repetitions int, duration time.Duration) {
 	display.mutex.Lock()
 	for i := 0; i < repetitions; i++ {
-		err := display.driver.BacklightOff()
+		err := display.driver.BacklightOn()
 		logErrorandExit("Failed while flashing display", err)
 		time.Sleep(duration / 2)
-		err = display.driver.BacklightOn()
+		err = display.driver.BacklightOff()
 		logErrorandExit("Failed while flashing display", err)
 		time.Sleep(duration / 2)
 	}
@@ -102,5 +112,5 @@ func (display *SharedDisplay) FlashDisplay(repetitions int, duration time.Durati
 //Close closes the connection to the display and frees the GPIO pins for other uses
 func (display *SharedDisplay) Close() {
 	err := display.driver.Close()
-	logErrorandExit("failed while closing display", err)
+	logErrorandExit("Failed while closing display", err)
 }
