@@ -17,7 +17,7 @@ type SharedDisplay struct {
 
 //NewDisplay Generates a pointer to a new SharedDisplay instance
 func NewDisplay(pinout []int, blPolarity bool) *SharedDisplay {
-	driver, err := hd44780.NewGPIO(pinout[0],pinout[1],pinout[2],pinout[3],pinout[4],pinout[5],pinout[6], hd44780.BacklightPolarity(blPolarity), hd44780.RowAddress16Col, hd44780.TwoLine, hd44780.DisplayOn)
+	driver, err := hd44780.NewGPIO(pinout[0], pinout[1], pinout[2], pinout[3], pinout[4], pinout[5], pinout[6], hd44780.BacklightPolarity(blPolarity), hd44780.RowAddress16Col, hd44780.TwoLine, hd44780.DisplayOn)
 	logErrorandExit("Cannot init LCD:", err)
 	err = driver.Clear()
 	logErrorandExit("Cannot clear LCD:", err)
