@@ -9,15 +9,15 @@ import (
 	"time"
 )
 
-//SharedDisplay represents instance of a HD44780 LCD shareable between many goroutines
+//SharedDisplay represents instance of an HD44780 LCD shareable between many goroutines
 type SharedDisplay struct {
 	driver *hd44780.HD44780
 	mutex  sync.Mutex
 }
 
 //NewDisplay Generates a pointer to a new SharedDisplay instance
-func NewDisplay(rs, en, d4, d5, d6, d7, backlight int, blPolarity bool) *SharedDisplay {
-	driver, err := hd44780.NewGPIO(rs, en, d4, d5, d6, d7, backlight, hd44780.BacklightPolarity(blPolarity), hd44780.RowAddress16Col, hd44780.TwoLine, hd44780.DisplayOn)
+func NewDisplay(pinout []int, blPolarity bool) *SharedDisplay {
+	driver, err := hd44780.NewGPIO(pinout[0],pinout[1],pinout[2],pinout[3],pinout[4],pinout[5],pinout[6], hd44780.BacklightPolarity(blPolarity), hd44780.RowAddress16Col, hd44780.TwoLine, hd44780.DisplayOn)
 	logErrorandExit("Cannot init LCD:", err)
 	err = driver.Clear()
 	logErrorandExit("Cannot clear LCD:", err)
