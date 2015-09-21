@@ -38,7 +38,7 @@ func lcdHub(pushBullet, bmp chan string, lcdChan chan *lcd.LcdEvent ) {
 		case pushBulletMessage:= <- pushBullet:
 			lcdChan<-lcd.NewLcdEvent(pushBulletMessage, 5* time.Second, lcd.BEFORE, 1, true)
 		case bmpMessage:= <- bmp:
-			lcdChan<-lcd.NewLcdEvent(bmpMessage, 5* time.Second, lcd.NO_FLASH, 1, false)
+			lcdChan<-lcd.NewLcdEvent(bmpMessage, 3* time.Second, lcd.NO_FLASH, 1, false)
 		}
 	}
 }
