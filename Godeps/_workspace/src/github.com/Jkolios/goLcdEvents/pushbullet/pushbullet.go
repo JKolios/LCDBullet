@@ -2,7 +2,7 @@ package pushbullet
 
 import (
 	"encoding/json"
-	"github.com/gorilla/websocket"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/gorilla/websocket"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,11 +19,6 @@ type APIClient struct {
 	token   string
 	control chan int
 	Output  chan string
-}
-
-type APIResponse struct {
-	body   string
-	serverTime time.Time
 }
 
 func NewClient(apiToken string) *APIClient {
@@ -59,7 +54,6 @@ func (client *APIClient) StopMonitoring() {
 func wsMonitor(connection *websocket.Conn, token string, control chan int, output chan string) {
 	//set up the message pump
 	rawMessageChannel := make(chan map[string]interface{}, 10)
-	APIResponseChannel := make(chan APIResponse)
 	lastPushCheck := time.Now()
 	go messagePump(connection, rawMessageChannel, control)
 	for {
@@ -78,15 +72,11 @@ func wsMonitor(connection *websocket.Conn, token string, control chan int, outpu
 					log.Println(message)
 				} else if message["type"] == "tickle" {
 					log.Println("Got a tickle push, fetching body/bodies...")
-					go getPushesSince(lastPushCheck, token, APIResponseChannel)
+					go getPushesSince(lastPushCheck, token, output)
 					lastPushCheck = time.Now()
 				} else {
 					log.Println("Got a nop message, ignoring")
 				}
-
-			case APIResponse := <-APIResponseChannel:
-				lastPushCheck = APIResponse.serverTime
-				output<- APIResponse.body
 
 			}
 		}
@@ -115,7 +105,7 @@ func messagePump(conn *websocket.Conn, messageChannel chan map[string]interface{
 	}
 }
 
-func getPushesSince(since time.Time, token string, output chan APIResponse) {
+func getPushesSince(since time.Time, token string, output chan string) {
 
 	httpClient := &http.Client{}
 	requestUrl := apiURL + "pushes?active=true&modified_after=" + strconv.Itoa(int(since.Unix()))
@@ -150,24 +140,14 @@ func getPushesSince(since time.Time, token string, output chan APIResponse) {
 	log.Println(responseStruct)
 	for _, message := range responseStruct["pushes"] {
 		body, ok := message["body"].(string)
-		if !ok  {
-			messageId, ok :=message["iden"].(string)
+		if !ok {
+			messageId, ok := message["iden"].(string)
 			if !ok {
 				log.Println("Got a malformed push, ignoring")
 			}
 			log.Println("Message " + messageId + " contains no body, ignoring")
-		}else {
-			serverTimeStr, ok := message["modified"].(string)
-			if !ok {
-				log.Println("Cannot parse message timestamp, ignoring")
-				serverTimeStr = nil
-			}
-			serverTime := time.Unix(strconv.ParseInt(serverTimeStr, 10, 64), 0)
-			if err != nil {
-				log.Println("Cannot parse message timestamp, ignoring")
-				serverTime = time.Now()
-			}
-			output <- APIResponse{body:body, serverTime:serverTime}
+		} else {
+			output <- body
 		}
 	}
 }

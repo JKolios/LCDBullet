@@ -2,16 +2,14 @@ package main
 
 import (
 	"bufio"
-	"github.com/Jkolios/goLcdEvents/lcd"
-	"github.com/Jkolios/goLcdEvents/pushbullet"
-	"github.com/Jkolios/goLcdEvents/bmp"
-	_ "github.com/kidoman/embd/host/rpi"
-	"gopkg.in/yaml.v2"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/Jkolios/goLcdEvents/bmp"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/Jkolios/goLcdEvents/lcd"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/Jkolios/goLcdEvents/pushbullet"
+	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/gopkg.in/yaml.v2"
 	"log"
 	"os"
 	"time"
-
-
 )
 
 func parseYAMLConf(filename string) map[string]interface{} {
@@ -32,13 +30,13 @@ func parseYAMLConf(filename string) map[string]interface{} {
 	return confObject
 }
 
-func lcdHub(pushBullet, bmp chan string, lcdChan chan *lcd.LcdEvent ) {
+func lcdHub(pushBullet, bmp chan string, lcdChan chan *lcd.LcdEvent) {
 	for {
 		select {
-		case pushBulletMessage:= <- pushBullet:
-			lcdChan<-lcd.NewLcdEvent(pushBulletMessage, 5* time.Second, lcd.BEFORE, 1, true)
-		case bmpMessage:= <- bmp:
-			lcdChan<-lcd.NewLcdEvent(bmpMessage, 3* time.Second, lcd.NO_FLASH, 1, false)
+		case pushBulletMessage := <-pushBullet:
+			lcdChan <- lcd.NewLcdEvent(pushBulletMessage, 5*time.Second, lcd.BEFORE, 1, true)
+		case bmpMessage := <-bmp:
+			lcdChan <- lcd.NewLcdEvent(bmpMessage, 3*time.Second, lcd.NO_FLASH, 1, false)
 		}
 	}
 }
@@ -57,7 +55,7 @@ func main() {
 	defer display.Close()
 
 	initEvent := lcd.NewLcdEvent("Display initialized", 3*time.Second, lcd.BEFORE_AND_AFTER, 1, true)
-	display.Input<-initEvent
+	display.Input <- initEvent
 
 	client := pushbullet.NewClient(config["apiToken"].(string))
 	client.StartMonitoring()
@@ -66,5 +64,6 @@ func main() {
 
 	go lcdHub(client.Output, bmpChan, display.Input)
 
-	for {}
+	for {
+	}
 }
