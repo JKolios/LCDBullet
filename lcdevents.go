@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
-	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi"
 	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/gopkg.in/yaml.v2"
 	"github.com/Jkolios/goLcdEvents/bmp"
 	"github.com/Jkolios/goLcdEvents/lcd"
 	"github.com/Jkolios/goLcdEvents/pushbullet"
 	"github.com/Jkolios/goLcdEvents/systeminfo"
+	_ "github.com/kidoman/embd/host/rpi"
 	"log"
 	"os"
 	"os/signal"

@@ -22,7 +22,7 @@ type APIClient struct {
 }
 
 type APIResponse struct {
-	body   string
+	body       string
 	serverTime time.Time
 }
 
@@ -83,15 +83,14 @@ func wsMonitor(connection *websocket.Conn, token string, control chan int, outpu
 				} else {
 					log.Println("Got a nop message, ignoring")
 				}
-
-			case APIResponse := <-APIResponseChannel:
-				lastPushCheck = APIResponse.serverTime
-				output<- APIResponse.body
-
 			}
+
+		case APIResponse := <-APIResponseChannel:
+			lastPushCheck = APIResponse.serverTime
+			output <- APIResponse.body
+
 		}
 	}
-
 }
 
 func messagePump(conn *websocket.Conn, messageChannel chan map[string]interface{}, control chan int) {
@@ -150,24 +149,18 @@ func getPushesSince(since time.Time, token string, output chan APIResponse) {
 	log.Println(responseStruct)
 	for _, message := range responseStruct["pushes"] {
 		body, ok := message["body"].(string)
-		if !ok  {
-			messageId, ok :=message["iden"].(string)
+		if !ok {
+			messageId, ok := message["iden"].(string)
 			if !ok {
 				log.Println("Got a malformed push, ignoring")
 			}
 			log.Println("Message " + messageId + " contains no body, ignoring")
-		}else {
-			serverTimeStr, ok := message["modified"].(string)
-			if !ok {
-				log.Println("Cannot parse message timestamp, ignoring")
-				serverTimeStr = nil
-			}
-			serverTime := time.Unix(strconv.ParseInt(serverTimeStr, 10, 64), 0)
-			if err != nil {
-				log.Println("Cannot parse message timestamp, ignoring")
-				serverTime = time.Now()
-			}
-			output <- APIResponse{body:body, serverTime:serverTime}
+		} else {
+			serverTimeStr, _ := message["modified"].(string)
+			serverTimeSec, _ := strconv.ParseInt(serverTimeStr, 10, 64)
+			serverTime := time.Unix(serverTimeSec, 0)
+
+			output <- APIResponse{body: body, serverTime: serverTime}
 		}
 	}
 }
