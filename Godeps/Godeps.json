@@ -1,0 +1,34 @@
+{
+	"ImportPath": "github.com/JKolios/goLcdEvents",
+	"GoVersion": "go1.5.1",
+	"Deps": [
+		{
+			"ImportPath": "github.com/Jkolios/goLcdEvents/bmp",
+			"Rev": "410501cf692da240b79330a0a306c4275a68f3e3"
+		},
+		{
+			"ImportPath": "github.com/Jkolios/goLcdEvents/lcd",
+			"Rev": "410501cf692da240b79330a0a306c4275a68f3e3"
+		},
+		{
+			"ImportPath": "github.com/Jkolios/goLcdEvents/pushbullet",
+			"Rev": "410501cf692da240b79330a0a306c4275a68f3e3"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "fca8c8854093a154ff1eb580aae10276ad6b1b5f"
+		},
+		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "b6ab76f1fe9803ee1d59e7e5b2a797c1fe897ce5"
+		},
+		{
+			"ImportPath": "github.com/kidoman/embd",
+			"Rev": "5065e49386ae53e601ef7a300934a37cc21fd3b6"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
+		}
+	]
+}
