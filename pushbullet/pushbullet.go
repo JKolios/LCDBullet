@@ -83,6 +83,7 @@ func wsMonitor(connection *websocket.Conn, token string, control chan int, outpu
 				} else {
 					log.Println("Got a nop message, ignoring")
 				}
+			}
 
 			case APIResponse := <-APIResponseChannel:
 				lastPushCheck = APIResponse.serverTime
@@ -92,7 +93,7 @@ func wsMonitor(connection *websocket.Conn, token string, control chan int, outpu
 		}
 	}
 
-}
+
 
 func messagePump(conn *websocket.Conn, messageChannel chan map[string]interface{}, control chan int) {
 	messageMap := make(map[string]interface{})
