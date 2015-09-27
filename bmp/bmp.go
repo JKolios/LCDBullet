@@ -13,7 +13,7 @@ func InitBMP085(i2cBus byte) chan string {
 	bus := embd.NewI2CBus(i2cBus)
 	bmp := bmp085.New(bus)
 	output:= make(chan string)
-	go pollBMP085(bmp, output, 3 * time.Second)
+	go pollBMP085(bmp, output, 10 * time.Second)
 	return output
 }
 

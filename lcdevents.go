@@ -5,13 +5,13 @@ import (
 	"github.com/Jkolios/goLcdEvents/lcd"
 	"github.com/Jkolios/goLcdEvents/pushbullet"
 	"github.com/Jkolios/goLcdEvents/bmp"
+	"github.com/Jkolios/goLcdEvents/systeminfo"
 	_ "github.com/kidoman/embd/host/rpi"
 	"gopkg.in/yaml.v2"
 	"log"
 	"os"
 	"time"
-
-
+	"os/signal"
 )
 
 func parseYAMLConf(filename string) map[string]interface{} {
@@ -32,13 +32,20 @@ func parseYAMLConf(filename string) map[string]interface{} {
 	return confObject
 }
 
-func lcdHub(pushBullet, bmp chan string, lcdChan chan *lcd.LcdEvent ) {
+func lcdHub(pushBullet, bmp, sysinfo chan string, lcdChan chan *lcd.LcdEvent, control chan os.Signal) {
 	for {
 		select {
+		case <- control:
+			lcdChan<-lcd.NewShutdownEvent()
+			close(lcdChan)
+			return
 		case pushBulletMessage:= <- pushBullet:
-			lcdChan<-lcd.NewLcdEvent(pushBulletMessage, 5* time.Second, lcd.BEFORE, 1, true)
+			lcdChan<-lcd.NewDisplayEvent(pushBulletMessage, 5* time.Second, lcd.BEFORE, 1, true)
 		case bmpMessage:= <- bmp:
-			lcdChan<-lcd.NewLcdEvent(bmpMessage, 3* time.Second, lcd.NO_FLASH, 1, false)
+			lcdChan<-lcd.NewDisplayEvent(bmpMessage, 3 * time.Second, lcd.NO_FLASH, 1, false)
+		case sysinfoMessage:= <- sysinfo:
+			lcdChan<-lcd.NewDisplayEvent(sysinfoMessage, 3 * time.Second, lcd.NO_FLASH, 1, false)
+
 		}
 	}
 }
@@ -56,7 +63,7 @@ func main() {
 	display := lcd.NewDisplay(pinout, false)
 	defer display.Close()
 
-	initEvent := lcd.NewLcdEvent("Display initialized", 3*time.Second, lcd.BEFORE_AND_AFTER, 1, true)
+	initEvent := lcd.NewLcdEvent(lcd.EVENT_DISPLAY, "Display initialized", 3*time.Second, lcd.BEFORE_AND_AFTER, 1, true)
 	display.Input<-initEvent
 
 	client := pushbullet.NewClient(config["apiToken"].(string))
@@ -64,7 +71,12 @@ func main() {
 
 	bmpChan := bmp.InitBMP085(i2cBus)
 
-	go lcdHub(client.Output, bmpChan, display.Input)
+	sysInfoChan := systeminfo.InitSystemMonitoring()
+
+	controlChan := make(chan os.Signal, 1)
+	signal.Notify(controlChan, os.Interrupt, os.Kill)
+
+	go lcdHub(client.Output, bmpChan, sysInfoChan, display.Input, controlChan)
 
 	for {}
 }

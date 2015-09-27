@@ -5,7 +5,6 @@ import (
 	_ "github.com/kidoman/embd/host/rpi"
 	"log"
 	"math"
-	"sync"
 	"time"
 )
 
@@ -14,24 +13,35 @@ const (
 	BEFORE = 0
 	AFTER = 1
 	BEFORE_AND_AFTER = 2
+
+	EVENT_DISPLAY = 0
+	EVENT_SHUTDOWN = 1
 )
 
 //SharedDisplay represents instance of an HD44780 LCD shareable between many goroutines
 type SharedDisplay struct {
 	driver *hd44780.HD44780
-	mutex  sync.Mutex
 	Input chan *LcdEvent
 }
 
 type LcdEvent struct {
+	eventType int
 	message string
 	duration time.Duration
 	flash, flashRepetitions int
 	clearAfter bool
 }
 
-func NewLcdEvent(message string, duration time.Duration, flash int ,flashRepetitions int, clearAfter bool) *LcdEvent {
-	return &LcdEvent{message, duration, flash, flashRepetitions, clearAfter}
+func NewLcdEvent(eventType int,message string, duration time.Duration, flash int ,flashRepetitions int, clearAfter bool) *LcdEvent {
+	return &LcdEvent{eventType, message, duration, flash, flashRepetitions, clearAfter}
+}
+
+func NewShutdownEvent() *LcdEvent {
+	return &LcdEvent{EVENT_SHUTDOWN, "", 0 * time.Second, 0, 0, true}
+}
+
+func NewDisplayEvent(message string, duration time.Duration, flash int ,flashRepetitions int, clearAfter bool) *LcdEvent {
+	return &LcdEvent{EVENT_DISPLAY, message, duration, flash, flashRepetitions, clearAfter }
 }
 
 //NewDisplay Generates a pointer to a new SharedDisplay instance
@@ -41,7 +51,7 @@ func NewDisplay(pinout []int, blPolarity bool) *SharedDisplay {
 	err = driver.Clear()
 	logErrorandExit("Cannot clear LCD:", err)
 	input := make(chan *LcdEvent, 100)
-	display := SharedDisplay{driver, sync.Mutex{}, input}
+	display := SharedDisplay{driver, input}
 	go monitorInputChannel(&display, input)
 	return &display
 }
@@ -77,7 +87,6 @@ func (display *SharedDisplay) displaySingleFrame(bytes []byte, duration time.Dur
 //DisplayMessage shows the given message on the display. The message is split in pages if needed (no scrolling is used)
 //In general, only strings that can be mapped onto ASCII can be displayed correctly.
 func (display *SharedDisplay) DisplayEvent(event *LcdEvent) {
-	display.mutex.Lock()
 	err := display.driver.Clear()
 	logErrorandExit("Cannot clear LCD:", err)
 
@@ -108,7 +117,6 @@ func (display *SharedDisplay) DisplayEvent(event *LcdEvent) {
 	if event.flash == AFTER || event.flash == BEFORE_AND_AFTER{
 		display.flashDisplay(event.flashRepetitions, 1 * time.Second)
 	}
-	display.mutex.Unlock()
 }
 
 //FlashDisplay will trigger the LCD's display on and off
@@ -125,7 +133,15 @@ func (display *SharedDisplay) flashDisplay(repetitions int, duration time.Durati
 
 func monitorInputChannel(display *SharedDisplay, input chan *LcdEvent) {
 	for {
-		display.DisplayEvent(<-input)
+		incomingEvent := <-input
+		switch incomingEvent.eventType{
+		case EVENT_DISPLAY:
+			display.DisplayEvent(incomingEvent)
+		case EVENT_SHUTDOWN:
+			display.Close()
+			return
+		}
+
 	}
 }
 
@@ -133,6 +149,7 @@ func monitorInputChannel(display *SharedDisplay, input chan *LcdEvent) {
 func (display *SharedDisplay) Close() {
 	err := display.driver.Close()
 	logErrorandExit("Failed while closing display", err)
+
 }
 
 func logErrorandExit(message string, err error) {
