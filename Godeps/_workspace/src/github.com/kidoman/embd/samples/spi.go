@@ -5,8 +5,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
-	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
 )
 
 func main() {

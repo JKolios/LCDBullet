@@ -2,16 +2,16 @@ package main
 
 import (
 	"bufio"
+	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/gopkg.in/yaml.v2"
+	"github.com/Jkolios/goLcdEvents/bmp"
 	"github.com/Jkolios/goLcdEvents/lcd"
 	"github.com/Jkolios/goLcdEvents/pushbullet"
-	"github.com/Jkolios/goLcdEvents/bmp"
 	"github.com/Jkolios/goLcdEvents/systeminfo"
-	_ "github.com/kidoman/embd/host/rpi"
-	"gopkg.in/yaml.v2"
 	"log"
 	"os"
-	"time"
 	"os/signal"
+	"time"
 )
 
 func parseYAMLConf(filename string) map[string]interface{} {
@@ -35,16 +35,16 @@ func parseYAMLConf(filename string) map[string]interface{} {
 func lcdHub(pushBullet, bmp, sysinfo chan string, lcdChan chan *lcd.LcdEvent, control chan os.Signal) {
 	for {
 		select {
-		case <- control:
-			lcdChan<-lcd.NewShutdownEvent()
+		case <-control:
+			lcdChan <- lcd.NewShutdownEvent()
 			close(lcdChan)
 			return
-		case pushBulletMessage:= <- pushBullet:
-			lcdChan<-lcd.NewDisplayEvent(pushBulletMessage, 5* time.Second, lcd.BEFORE, 1, true)
-		case bmpMessage:= <- bmp:
-			lcdChan<-lcd.NewDisplayEvent(bmpMessage, 3 * time.Second, lcd.NO_FLASH, 1, false)
-		case sysinfoMessage:= <- sysinfo:
-			lcdChan<-lcd.NewDisplayEvent(sysinfoMessage, 3 * time.Second, lcd.NO_FLASH, 1, false)
+		case pushBulletMessage := <-pushBullet:
+			lcdChan <- lcd.NewDisplayEvent(pushBulletMessage, 5*time.Second, lcd.BEFORE, 1, true)
+		case bmpMessage := <-bmp:
+			lcdChan <- lcd.NewDisplayEvent(bmpMessage, 3*time.Second, lcd.NO_FLASH, 1, false)
+		case sysinfoMessage := <-sysinfo:
+			lcdChan <- lcd.NewDisplayEvent(sysinfoMessage, 3*time.Second, lcd.NO_FLASH, 1, false)
 
 		}
 	}
@@ -64,7 +64,7 @@ func main() {
 	defer display.Close()
 
 	initEvent := lcd.NewLcdEvent(lcd.EVENT_DISPLAY, "Display initialized", 3*time.Second, lcd.BEFORE_AND_AFTER, 1, true)
-	display.Input<-initEvent
+	display.Input <- initEvent
 
 	client := pushbullet.NewClient(config["apiToken"].(string))
 	client.StartMonitoring()
@@ -78,5 +78,6 @@ func main() {
 
 	go lcdHub(client.Output, bmpChan, sysInfoChan, display.Input, controlChan)
 
-	for {}
+	for {
+	}
 }

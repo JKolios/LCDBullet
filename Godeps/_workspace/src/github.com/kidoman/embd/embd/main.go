@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
+	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
 	"github.com/codegangsta/cli"
 )
 

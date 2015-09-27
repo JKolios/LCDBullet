@@ -4,8 +4,8 @@ package watersensor
 import (
 	"sync"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
 )
 
 // WaterSensor represents a water sensor.

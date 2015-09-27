@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 // Descriptor represents a host descriptor.

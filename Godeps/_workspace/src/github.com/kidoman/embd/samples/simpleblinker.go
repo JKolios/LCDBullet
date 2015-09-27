@@ -8,8 +8,8 @@ package main
 import (
 	"time"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
-	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi" // This loads the RPi driver
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi" // This loads the RPi driver
 )
 
 func main() {

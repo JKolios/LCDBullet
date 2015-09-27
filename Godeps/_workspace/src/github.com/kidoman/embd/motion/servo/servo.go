@@ -2,8 +2,8 @@
 package servo
 
 import (
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/util"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/util"
 )
 
 const (

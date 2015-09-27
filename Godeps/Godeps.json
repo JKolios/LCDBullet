@@ -1,18 +1,10 @@
 {
-	"ImportPath": "github.com/JKolios/goLcdEvents",
-	"GoVersion": "go1.5.1",
+	"ImportPath": "github.com/Jkolios/goLcdEvents",
+	"GoVersion": "go1.5",
 	"Deps": [
 		{
-			"ImportPath": "github.com/Jkolios/goLcdEvents/bmp",
-			"Rev": "410501cf692da240b79330a0a306c4275a68f3e3"
-		},
-		{
-			"ImportPath": "github.com/Jkolios/goLcdEvents/lcd",
-			"Rev": "410501cf692da240b79330a0a306c4275a68f3e3"
-		},
-		{
-			"ImportPath": "github.com/Jkolios/goLcdEvents/pushbullet",
-			"Rev": "410501cf692da240b79330a0a306c4275a68f3e3"
+			"ImportPath": "github.com/c9s/goprocinfo/linux",
+			"Rev": "14038397a16323b61dee2f7c360c0e0b764ac2f9"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",

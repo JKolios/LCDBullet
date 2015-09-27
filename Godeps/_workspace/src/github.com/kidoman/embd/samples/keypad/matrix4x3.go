@@ -4,8 +4,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/interface/keypad/matrix4x3"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/interface/keypad/matrix4x3"
 	"time"
 )
 

@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
 )
 
 type led struct {

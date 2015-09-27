@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/sensor/bh1750fvi"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/sensor/bh1750fvi"
 
-	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
+	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
 )
 
 func main() {

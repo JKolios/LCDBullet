@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 // ServoBlaster represents a software RPi PWM/PCM based servo control module.

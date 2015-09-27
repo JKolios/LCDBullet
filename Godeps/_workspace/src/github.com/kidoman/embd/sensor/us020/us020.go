@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
-	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
 )
 
 const (
