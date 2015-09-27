@@ -63,6 +63,7 @@ func (display *SharedDisplay) displaySingleFrame(bytes []byte, duration time.Dur
 	if len(bytes) < 16 {
 		rightBound = len(bytes)
 	}
+	log.Println("Line 0: " + bytes[0:rightBound])
 	for _, char := range bytes[0:rightBound] {
 		err := display.driver.WriteChar(char)
 		logErrorandExit("Cannot write char to LCD:", err)
@@ -75,6 +76,8 @@ func (display *SharedDisplay) displaySingleFrame(bytes []byte, duration time.Dur
 		if len(bytes) < 32 {
 			rightBound = len(bytes)
 		}
+			log.Println("Line 1: " + bytes[16:rightBound])
+
 		for _, char := range bytes[16:rightBound] {
 			err := display.driver.WriteChar(char)
 			logErrorandExit("Cannot write char to LCD:", err)
@@ -87,6 +90,7 @@ func (display *SharedDisplay) displaySingleFrame(bytes []byte, duration time.Dur
 //DisplayMessage shows the given message on the display. The message is split in pages if needed (no scrolling is used)
 //In general, only strings that can be mapped onto ASCII can be displayed correctly.
 func (display *SharedDisplay) DisplayEvent(event *LcdEvent) {
+	log.Println("Displaying message: " + event.message)
 	err := display.driver.Clear()
 	logErrorandExit("Cannot clear LCD:", err)
 
@@ -97,7 +101,9 @@ func (display *SharedDisplay) DisplayEvent(event *LcdEvent) {
 	bytes := []byte(event.message)
 
 	frames := int(math.Ceil(float64(len(bytes)) / 32.0))
+	log.Println("Frames: " + frames)
 	frametime := int64(math.Ceil(float64(event.duration) / float64(frames)))
+	log.Println("Frame time: " + frametime)
 
 	for i := 0; i < frames; i++ {
 		log.Printf("Displaying frame %v\n", i)
@@ -106,6 +112,7 @@ func (display *SharedDisplay) DisplayEvent(event *LcdEvent) {
 		if rightBound > len(bytes) {
 			rightBound = len(bytes)
 		}
+		log.Println("Frame Content: " + bytes[i*32:rightBound])
 		display.displaySingleFrame(bytes[i*32:rightBound], time.Duration(frametime))
 
 		if i != (frames-1) || event.clearAfter {
