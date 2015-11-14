@@ -32,12 +32,13 @@ func parseYAMLConf(filename string) map[string]interface{} {
 	return confObject
 }
 
-func lcdHub(pushBullet, bmp, sysinfo chan string, lcdChan chan *lcd.LcdEvent, control chan os.Signal) {
+func lcdHub(pushBullet, bmp, sysinfo chan string, lcdChan chan *lcd.LcdEvent, control chan os.Signal, shutdown chan bool) {
 	for {
 		select {
 		case <-control:
+			log.Println("lcdHub got a shutdown signal")
 			lcdChan <- lcd.NewShutdownEvent()
-			close(lcdChan)
+			shutdown <- true
 			return
 		case pushBulletMessage := <-pushBullet:
 			lcdChan <- lcd.NewDisplayEvent(pushBulletMessage, 5*time.Second, lcd.BEFORE, 1, true)
@@ -76,8 +77,8 @@ func main() {
 	controlChan := make(chan os.Signal, 1)
 	signal.Notify(controlChan, os.Interrupt, os.Kill)
 
-	go lcdHub(client.Output, bmpChan, sysInfoChan, display.Input, controlChan)
+	waitChan := make(chan bool)
+	go lcdHub(client.Output, bmpChan, sysInfoChan, display.Input, controlChan, waitChan)
 
-	waitChan := make(chan int)
 	<-waitChan
 }

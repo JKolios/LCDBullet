@@ -26,4 +26,5 @@ _testmain.go
 main
 conf.yml
 lcdevents
+goLcdEvents
 .idea/

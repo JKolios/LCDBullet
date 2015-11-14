@@ -146,7 +146,9 @@ func monitorInputChannel(display *SharedDisplay, input chan *LcdEvent) {
 		case EVENT_DISPLAY:
 			display.DisplayEvent(incomingEvent)
 		case EVENT_SHUTDOWN:
+			log.Println("lcd input channel got a shutdown event")
 			display.Close()
+			log.Println("Display closed")
 			return
 		}
 
