@@ -78,6 +78,6 @@ func main() {
 
 	go lcdHub(client.Output, bmpChan, sysInfoChan, display.Input, controlChan)
 
-	for {
-	}
+	waitChan := make(chan int)
+	<-waitChan
 }

@@ -5,34 +5,35 @@ import (
 	_ "github.com/kidoman/embd/host/rpi"
 	"log"
 	"math"
+	"strconv"
 	"time"
 )
 
 const (
-	NO_FLASH = -1
-	BEFORE = 0
-	AFTER = 1
+	NO_FLASH         = -1
+	BEFORE           = 0
+	AFTER            = 1
 	BEFORE_AND_AFTER = 2
 
-	EVENT_DISPLAY = 0
+	EVENT_DISPLAY  = 0
 	EVENT_SHUTDOWN = 1
 )
 
 //SharedDisplay represents instance of an HD44780 LCD shareable between many goroutines
 type SharedDisplay struct {
 	driver *hd44780.HD44780
-	Input chan *LcdEvent
+	Input  chan *LcdEvent
 }
 
 type LcdEvent struct {
-	eventType int
-	message string
-	duration time.Duration
+	eventType               int
+	message                 string
+	duration                time.Duration
 	flash, flashRepetitions int
-	clearAfter bool
+	clearAfter              bool
 }
 
-func NewLcdEvent(eventType int,message string, duration time.Duration, flash int ,flashRepetitions int, clearAfter bool) *LcdEvent {
+func NewLcdEvent(eventType int, message string, duration time.Duration, flash int, flashRepetitions int, clearAfter bool) *LcdEvent {
 	return &LcdEvent{eventType, message, duration, flash, flashRepetitions, clearAfter}
 }
 
@@ -40,8 +41,8 @@ func NewShutdownEvent() *LcdEvent {
 	return &LcdEvent{EVENT_SHUTDOWN, "", 0 * time.Second, 0, 0, true}
 }
 
-func NewDisplayEvent(message string, duration time.Duration, flash int ,flashRepetitions int, clearAfter bool) *LcdEvent {
-	return &LcdEvent{EVENT_DISPLAY, message, duration, flash, flashRepetitions, clearAfter }
+func NewDisplayEvent(message string, duration time.Duration, flash int, flashRepetitions int, clearAfter bool) *LcdEvent {
+	return &LcdEvent{EVENT_DISPLAY, message, duration, flash, flashRepetitions, clearAfter}
 }
 
 //NewDisplay Generates a pointer to a new SharedDisplay instance
@@ -63,7 +64,7 @@ func (display *SharedDisplay) displaySingleFrame(bytes []byte, duration time.Dur
 	if len(bytes) < 16 {
 		rightBound = len(bytes)
 	}
-	log.Println("Line 0: " + bytes[0:rightBound])
+	log.Println("Line 0: " + string(bytes[0:rightBound]))
 	for _, char := range bytes[0:rightBound] {
 		err := display.driver.WriteChar(char)
 		logErrorandExit("Cannot write char to LCD:", err)
@@ -76,7 +77,7 @@ func (display *SharedDisplay) displaySingleFrame(bytes []byte, duration time.Dur
 		if len(bytes) < 32 {
 			rightBound = len(bytes)
 		}
-			log.Println("Line 1: " + bytes[16:rightBound])
+		log.Println("Line 1: " + string(bytes[16:rightBound]))
 
 		for _, char := range bytes[16:rightBound] {
 			err := display.driver.WriteChar(char)
@@ -94,16 +95,16 @@ func (display *SharedDisplay) DisplayEvent(event *LcdEvent) {
 	err := display.driver.Clear()
 	logErrorandExit("Cannot clear LCD:", err)
 
-	if event.flash == BEFORE || event.flash == BEFORE_AND_AFTER{
-		display.flashDisplay(event.flashRepetitions, 1 * time.Second)
+	if event.flash == BEFORE || event.flash == BEFORE_AND_AFTER {
+		display.flashDisplay(event.flashRepetitions, 1*time.Second)
 	}
 
 	bytes := []byte(event.message)
 
 	frames := int(math.Ceil(float64(len(bytes)) / 32.0))
-	log.Println("Frames: " + frames)
+	log.Println("Frames: " + strconv.Itoa(frames))
 	frametime := int64(math.Ceil(float64(event.duration) / float64(frames)))
-	log.Println("Frame time: " + frametime)
+	log.Println("Frame time: " + strconv.Itoa(int(frametime)))
 
 	for i := 0; i < frames; i++ {
 		log.Printf("Displaying frame %v\n", i)
@@ -112,17 +113,17 @@ func (display *SharedDisplay) DisplayEvent(event *LcdEvent) {
 		if rightBound > len(bytes) {
 			rightBound = len(bytes)
 		}
-		log.Println("Frame Content: " + bytes[i*32:rightBound])
+		log.Println("Frame Content: " + string(bytes[i*32:rightBound]))
 		display.displaySingleFrame(bytes[i*32:rightBound], time.Duration(frametime))
 
 		if i != (frames-1) || event.clearAfter {
-		display.driver.Clear()
-	}
+			display.driver.Clear()
+		}
 
 	}
 
-	if event.flash == AFTER || event.flash == BEFORE_AND_AFTER{
-		display.flashDisplay(event.flashRepetitions, 1 * time.Second)
+	if event.flash == AFTER || event.flash == BEFORE_AND_AFTER {
+		display.flashDisplay(event.flashRepetitions, 1*time.Second)
 	}
 }
 
@@ -141,7 +142,7 @@ func (display *SharedDisplay) flashDisplay(repetitions int, duration time.Durati
 func monitorInputChannel(display *SharedDisplay, input chan *LcdEvent) {
 	for {
 		incomingEvent := <-input
-		switch incomingEvent.eventType{
+		switch incomingEvent.eventType {
 		case EVENT_DISPLAY:
 			display.DisplayEvent(incomingEvent)
 		case EVENT_SHUTDOWN:
