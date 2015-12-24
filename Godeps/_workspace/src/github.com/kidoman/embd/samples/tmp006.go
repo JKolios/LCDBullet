@@ -8,10 +8,10 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/sensor/tmp006"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/sensor/tmp006"
 
-	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
+	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
 )
 
 func main() {

@@ -9,8 +9,8 @@
 package rpi
 
 import (
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/generic"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/generic"
 )
 
 var spiDeviceMinor = byte(0)

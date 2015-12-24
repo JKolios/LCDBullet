@@ -2,8 +2,8 @@
 package mcp3008
 
 import (
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
 )
 
 // MCP3008 represents a mcp3008 8bit DAC.

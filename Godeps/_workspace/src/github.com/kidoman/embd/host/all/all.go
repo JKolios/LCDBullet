@@ -2,6 +2,6 @@
 package all
 
 import (
-	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/bbb"
-	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi"
+	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/bbb"
+	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi"
 )

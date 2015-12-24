@@ -1,84 +1,109 @@
 package main
 
 import (
-	"bufio"
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/gopkg.in/yaml.v2"
-	"github.com/Jkolios/goLcdEvents/bmp"
-	"github.com/Jkolios/goLcdEvents/lcd"
-	"github.com/Jkolios/goLcdEvents/pushbullet"
-	"github.com/Jkolios/goLcdEvents/systeminfo"
-	_ "github.com/kidoman/embd/host/rpi"
+	"encoding/json"
+	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi"
+	"github.com/JKolios/goLcdEvents/consumers/lcd"
+	"github.com/JKolios/goLcdEvents/producers/bmp"
+	"github.com/JKolios/goLcdEvents/producers/pushbullet"
+	"github.com/JKolios/goLcdEvents/producers/systeminfo"
+	"github.com/JKolios/goLcdEvents/utils"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
-	"time"
+	"syscall"
 )
 
-func parseYAMLConf(filename string) map[string]interface{} {
-
-	confFile, err := os.Open("conf.yml")
-	if err != nil {
-		log.Println("Cannot open conf file:" + err.Error())
-		return nil
-	}
-	defer confFile.Close()
-
-	scanner := bufio.NewScanner(confFile)
-	confObject := make(map[string]interface{})
-	for scanner.Scan() {
-		log.Println(scanner.Text())
-		yaml.Unmarshal(scanner.Bytes(), &confObject)
-	}
-	return confObject
+type Producer interface {
+	Initialize(config utils.Configuration)
+	Subscribe(chan string)
+	Terminate()
 }
 
-func lcdHub(pushBullet, bmp, sysinfo chan string, lcdChan chan *lcd.LcdEvent, control chan os.Signal, shutdown chan bool) {
+type Consumer interface {
+	Initialize(config utils.Configuration)
+	Consume(mType string, message string)
+	Terminate()
+}
+
+func parseJSONConf(filename string) (utils.Configuration, error) {
+
+	var confObject utils.Configuration
+	confFile, err := ioutil.ReadFile(filename)
+
+	err = json.Unmarshal(confFile, &confObject)
+	return confObject, err
+}
+
+func messageHub(producerChan chan string, Consumers []Consumer, control chan os.Signal) {
 	for {
 		select {
+		case incoming := <-producerChan:
+			for _, consumer := range Consumers {
+				consumer.Consume("other", incoming)
+			}
 		case <-control:
-			log.Println("lcdHub got a shutdown signal")
-			lcdChan <- lcd.NewShutdownEvent()
-			shutdown <- true
-			return
-		case pushBulletMessage := <-pushBullet:
-			lcdChan <- lcd.NewDisplayEvent(pushBulletMessage, 5*time.Second, lcd.BEFORE, 1, true)
-		case bmpMessage := <-bmp:
-			lcdChan <- lcd.NewDisplayEvent(bmpMessage, 3*time.Second, lcd.NO_FLASH, 1, false)
-		case sysinfoMessage := <-sysinfo:
-			lcdChan <- lcd.NewDisplayEvent(sysinfoMessage, 3*time.Second, lcd.NO_FLASH, 1, false)
-
+			for _, consumer := range Consumers {
+				consumer.Terminate()
+			}
+			control <- syscall.SIGINT
 		}
+
 	}
 }
 
 func main() {
-	config := parseYAMLConf("conf.yml")
-	log.Printf("Config:%v", config)
-
-	var pinout []int
-	for _, val := range config["pinout"].([]interface{}) {
-		pinout = append(pinout, val.(int))
+	config, err := parseJSONConf("conf.json")
+	if err != nil {
+		log.Fatalln("Error while parsing config: " + err.Error())
 	}
-	i2cBus := uint8(config["bmpI2c"].(int))
+	log.Printf("Config:%+v", config)
 
-	display := lcd.NewDisplay(pinout, false)
-	defer display.Close()
+	// Consumer Init
 
-	initEvent := lcd.NewLcdEvent(lcd.EVENT_DISPLAY, "Display initialized", 3*time.Second, lcd.BEFORE_AND_AFTER, 1, true)
-	display.Input <- initEvent
+	var Consumers []Consumer
 
-	client := pushbullet.NewClient(config["apiToken"].(string))
-	client.StartMonitoring()
+	if utils.SliceContains(config.Consumers, "lcd") {
 
-	bmpChan := bmp.InitBMP085(i2cBus)
+		lcdConsumer := lcd.NewLCDConsumer()
+		lcdConsumer.Initialize(config)
+		lcdConsumer.Consume("other", "Display Initialized")
+		Consumers = append(Consumers, lcdConsumer)
+		defer lcdConsumer.Terminate()
 
-	sysInfoChan := systeminfo.InitSystemMonitoring()
+	}
+
+	// Producer Init
+
+	var producers []Producer
+	producerChan := make(chan string)
+
+	if utils.SliceContains(config.Producers, "bmp") {
+		bmpProducer := bmp.NewBMPProducer()
+		bmpProducer.Initialize(config)
+		bmpProducer.Subscribe(producerChan)
+		producers = append(producers, bmpProducer)
+	}
+
+	if utils.SliceContains(config.Producers, "pushbullet") {
+		pushbulletProducer := pushbullet.NewPushbulletProducer()
+		pushbulletProducer.Initialize(config)
+		pushbulletProducer.Subscribe(producerChan)
+		producers = append(producers, pushbulletProducer)
+	}
+
+	if utils.SliceContains(config.Producers, "systeminfo") {
+		sysinfoProducer := systeminfo.NewSystemInfoProducer()
+		sysinfoProducer.Initialize(config)
+		sysinfoProducer.Subscribe(producerChan)
+		producers = append(producers, sysinfoProducer)
+	}
 
 	controlChan := make(chan os.Signal, 1)
 	signal.Notify(controlChan, os.Interrupt, os.Kill)
 
-	waitChan := make(chan bool)
-	go lcdHub(client.Output, bmpChan, sysInfoChan, display.Input, controlChan, waitChan)
+	go messageHub(producerChan, Consumers, controlChan)
 
-	<-waitChan
+	<-controlChan
 }

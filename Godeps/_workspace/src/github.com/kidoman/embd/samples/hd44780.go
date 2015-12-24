@@ -6,10 +6,10 @@ import (
 	"flag"
 	"time"
 
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/controller/hd44780"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/controller/hd44780"
 
-	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
+	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/all"
 )
 
 func main() {

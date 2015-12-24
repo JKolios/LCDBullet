@@ -11,9 +11,9 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
+	"github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd"
 
-	_ "github.com/Jkolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/bbb"
+	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/bbb"
 )
 
 func main() {

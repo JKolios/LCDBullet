@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/Jkolios/goLcdEvents",
+	"ImportPath": "github.com/JKolios/goLcdEvents",
 	"GoVersion": "go1.5",
 	"Deps": [
 		{
@@ -12,15 +12,11 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "b6ab76f1fe9803ee1d59e7e5b2a797c1fe897ce5"
+			"Rev": "39cd638460acf1c01aaac38effc6e54ee7e04bca"
 		},
 		{
 			"ImportPath": "github.com/kidoman/embd",
 			"Rev": "5065e49386ae53e601ef7a300934a37cc21fd3b6"
-		},
-		{
-			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
 		}
 	]
 }
