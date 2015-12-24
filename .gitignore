@@ -24,7 +24,8 @@ _testmain.go
 *.prof
 
 main
-conf.yml
+conf.json
 lcdevents
 goLcdEvents
 .idea/
+*.swp
