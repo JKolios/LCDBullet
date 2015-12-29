@@ -1,11 +1,12 @@
 package lcd
 
 import (
-	"github.com/JKolios/goLcdEvents/utils"
 	"log"
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/JKolios/goLcdEvents/utils"
 )
 
 func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Duration) {
@@ -17,13 +18,13 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 	}
 	log.Println("Line 0: " + string(bytes[0:rightBound]))
 	for _, char := range bytes[0:rightBound] {
-		err := display.driver.WriteChar(char)
+		err := display.Driver.WriteChar(char)
 		utils.LogErrorandExit("Cannot write char to LCD:", err)
 	}
 
 	//Display Line 1
 	if len(bytes) > 16 {
-		display.driver.SetCursor(0, 1)
+		display.Driver.SetCursor(0, 1)
 		rightBound = 32
 		if len(bytes) < 32 {
 			rightBound = len(bytes)
@@ -31,7 +32,7 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 		log.Println("Line 1: " + string(bytes[16:rightBound]))
 
 		for _, char := range bytes[16:rightBound] {
-			err := display.driver.WriteChar(char)
+			err := display.Driver.WriteChar(char)
 			utils.LogErrorandExit("Cannot write char to LCD:", err)
 		}
 	}
@@ -43,7 +44,7 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 //In general, only strings that can be mapped onto ASCII can be displayed correctly.
 func (display *LCDConsumer) displayEvent(event *LcdEvent) {
 	log.Println("Displaying message: " + event.message)
-	err := display.driver.Clear()
+	err := display.Driver.Clear()
 	utils.LogErrorandExit("Cannot clear LCD:", err)
 
 	if event.flash == BEFORE || event.flash == BEFORE_AND_AFTER {
@@ -68,7 +69,7 @@ func (display *LCDConsumer) displayEvent(event *LcdEvent) {
 		display.displaySingleFrame(bytes[i*32:rightBound], time.Duration(frametime))
 
 		if i != (frames-1) || event.clearAfter {
-			display.driver.Clear()
+			display.Driver.Clear()
 		}
 
 	}
@@ -81,10 +82,10 @@ func (display *LCDConsumer) displayEvent(event *LcdEvent) {
 //FlashDisplay will trigger the LCD's display on and off
 func (display *LCDConsumer) flashDisplay(repetitions int, duration time.Duration) {
 	for i := 0; i < repetitions; i++ {
-		err := display.driver.BacklightOn()
+		err := display.Driver.BacklightOn()
 		utils.LogErrorandExit("Failed while flashing display", err)
 		time.Sleep(duration / 2)
-		err = display.driver.BacklightOff()
+		err = display.Driver.BacklightOff()
 		utils.LogErrorandExit("Failed while flashing display", err)
 		time.Sleep(duration / 2)
 	}

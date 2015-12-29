@@ -1,43 +1,39 @@
 package systeminfo
 
 import (
-	"github.com/JKolios/goLcdEvents/utils"
-	linuxproc "github.com/c9s/goprocinfo/linux"
 	"log"
 	"time"
+
+	"github.com/JKolios/goLcdEvents/conf"
+	"github.com/JKolios/goLcdEvents/events"
+	linuxproc "github.com/c9s/goprocinfo/linux"
 )
 
 type SystemInfoProducer struct {
-	outputChan chan string
+	outputChan chan events.Event
 }
 
-func NewSystemInfoProducer() *SystemInfoProducer {
-	return &SystemInfoProducer{}
-}
-
-func (producer *SystemInfoProducer) Initialize(config utils.Configuration) {
+func (producer *SystemInfoProducer) Initialize(config conf.Configuration) {
 	//Dummy
 	return
 }
 
-func (producer *SystemInfoProducer) Subscribe(producerChan chan string) {
+func (producer *SystemInfoProducer) Subscribe(producerChan chan events.Event) {
 	producer.outputChan = producerChan
-	go pollSystemInfo(producer.outputChan, time.Second*10)
+	go pollSystemInfo(producer, time.Second*10)
 }
 
-func pollSystemInfo(output chan string, every time.Duration) {
+func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 	for {
 		uptime, err := linuxproc.ReadUptime("/proc/uptime")
 		if err != nil {
 			log.Fatal("Failed while getting uptime")
 		}
-		uptimeStr := "Uptime: " + time.Duration(time.Duration(int64(uptime.Total))*time.Second).String()
+		uptimeStr := "Uptime:" + time.Duration(time.Duration(int64(uptime.Total))*time.Second).String()
+		uptimeEvent := events.Event{uptimeStr, "systeminfo", producer}
 
-		output <- uptimeStr
+		producer.outputChan <- uptimeEvent
 		time.Sleep(every)
 	}
 
-}
-
-func (consumer *SystemInfoProducer) Terminate() {
 }

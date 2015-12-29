@@ -19,12 +19,3 @@ func LogErrorandExit(message string, err error) {
 		log.Fatalln(message + err.Error())
 	}
 }
-
-type Configuration struct {
-	Producers  []string `json:"Producers"`
-	Consumers  []string `json:"Consumers"`
-	Pinout     []int    `json:"Pinout"`
-	Bmpi2c     byte     `json:"Bmpi2c"`
-	ApiToken   string   `json:"ApiToken"`
-	BlPolarity bool     `json:"BlPolarity"`
-}

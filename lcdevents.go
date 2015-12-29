@@ -1,60 +1,48 @@
 package main
 
 import (
-	"encoding/json"
-	_ "github.com/JKolios/goLcdEvents/Godeps/_workspace/src/github.com/kidoman/embd/host/rpi"
-	"github.com/JKolios/goLcdEvents/consumers/lcd"
-	"github.com/JKolios/goLcdEvents/producers/bmp"
-	"github.com/JKolios/goLcdEvents/producers/pushbullet"
-	"github.com/JKolios/goLcdEvents/producers/systeminfo"
-	"github.com/JKolios/goLcdEvents/utils"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/JKolios/goLcdEvents/conf"
+	"github.com/JKolios/goLcdEvents/consumers/httplog"
+	"github.com/JKolios/goLcdEvents/consumers/lcd"
+	"github.com/JKolios/goLcdEvents/events"
+	"github.com/JKolios/goLcdEvents/producers/bmp"
+	"github.com/JKolios/goLcdEvents/producers/pushbullet"
+	"github.com/JKolios/goLcdEvents/producers/systeminfo"
+	"github.com/JKolios/goLcdEvents/utils"
+	_ "github.com/kidoman/embd/host/rpi"
 )
 
-type Producer interface {
-	Initialize(config utils.Configuration)
-	Subscribe(chan string)
-	Terminate()
-}
-
-type Consumer interface {
-	Initialize(config utils.Configuration)
-	Consume(mType string, message string)
-	Terminate()
-}
-
-func parseJSONConf(filename string) (utils.Configuration, error) {
-
-	var confObject utils.Configuration
-	confFile, err := ioutil.ReadFile(filename)
-
-	err = json.Unmarshal(confFile, &confObject)
-	return confObject, err
-}
-
-func messageHub(producerChan chan string, Consumers []Consumer, control chan os.Signal) {
+func eventHub(producerChan chan events.Event, consumerChans []chan events.Event, control chan os.Signal) {
+	var incoming events.Event
 	for {
+		log.Println("Hub iteration")
+
 		select {
-		case incoming := <-producerChan:
-			for _, consumer := range Consumers {
-				consumer.Consume("other", incoming)
+		case incoming = <-producerChan:
+			log.Println(incoming)
+			for _, consumerChan := range consumerChans {
+				consumerChan <- incoming
 			}
 		case <-control:
-			for _, consumer := range Consumers {
-				consumer.Terminate()
-			}
-			control <- syscall.SIGINT
-		}
 
+			shutdownEvent := events.Event{false, "shutdown", nil}
+			for _, consumerChan := range consumerChans {
+				consumerChan <- shutdownEvent
+			}
+			producerChan <- shutdownEvent
+			control <- syscall.SIGINT
+
+		}
 	}
 }
 
 func main() {
-	config, err := parseJSONConf("conf.json")
+	config, err := conf.ParseJSONConf("conf.json")
 	if err != nil {
 		log.Fatalln("Error while parsing config: " + err.Error())
 	}
@@ -62,48 +50,54 @@ func main() {
 
 	// Consumer Init
 
-	var Consumers []Consumer
+	var Consumers []events.Consumer
 
 	if utils.SliceContains(config.Consumers, "lcd") {
+		Consumers = append(Consumers, &lcd.LCDConsumer{})
+	}
 
-		lcdConsumer := lcd.NewLCDConsumer()
-		lcdConsumer.Initialize(config)
-		lcdConsumer.Consume("other", "Display Initialized")
-		Consumers = append(Consumers, lcdConsumer)
-		defer lcdConsumer.Terminate()
+	if utils.SliceContains(config.Consumers, "httplog") {
+		Consumers = append(Consumers, &httplog.HttpConsumer{})
+	}
 
+	var consumerChannels []chan events.Event
+	var newChan chan events.Event
+
+	for _, consumer := range Consumers {
+		consumer.Initialize(config)
+		newChan = make(chan events.Event, 100)
+		consumer.Register(newChan)
+		consumerChannels = append(consumerChannels, newChan)
 	}
 
 	// Producer Init
 
-	var producers []Producer
-	producerChan := make(chan string)
-
-	if utils.SliceContains(config.Producers, "bmp") {
-		bmpProducer := bmp.NewBMPProducer()
-		bmpProducer.Initialize(config)
-		bmpProducer.Subscribe(producerChan)
-		producers = append(producers, bmpProducer)
-	}
+	var Producers []events.Producer
 
 	if utils.SliceContains(config.Producers, "pushbullet") {
-		pushbulletProducer := pushbullet.NewPushbulletProducer()
-		pushbulletProducer.Initialize(config)
-		pushbulletProducer.Subscribe(producerChan)
-		producers = append(producers, pushbulletProducer)
+		Producers = append(Producers, &pushbullet.PushbulletProducer{})
+	}
+
+	if utils.SliceContains(config.Producers, "bmp") {
+		Producers = append(Producers, &bmp.BMPProducer{})
 	}
 
 	if utils.SliceContains(config.Producers, "systeminfo") {
-		sysinfoProducer := systeminfo.NewSystemInfoProducer()
-		sysinfoProducer.Initialize(config)
-		sysinfoProducer.Subscribe(producerChan)
-		producers = append(producers, sysinfoProducer)
+		Producers = append(Producers, &systeminfo.SystemInfoProducer{})
+	}
+
+	producerChan := make(chan events.Event, 100)
+
+	for _, producer := range Producers {
+		producer.Initialize(config)
+		producer.Subscribe(producerChan)
+
 	}
 
 	controlChan := make(chan os.Signal, 1)
 	signal.Notify(controlChan, os.Interrupt, os.Kill)
 
-	go messageHub(producerChan, Consumers, controlChan)
+	go eventHub(producerChan, consumerChannels, controlChan)
 
 	<-controlChan
 }

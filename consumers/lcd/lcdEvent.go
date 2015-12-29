@@ -2,6 +2,8 @@ package lcd
 
 import (
 	"time"
+
+	"github.com/JKolios/goLcdEvents/events"
 )
 
 const (
@@ -34,10 +36,25 @@ func newDisplayEvent(message string, duration time.Duration, flash int, flashRep
 	return &LcdEvent{EVENT_DISPLAY, message, duration, flash, flashRepetitions, clearAfter}
 }
 
-func monitorlcdEventInputChannel(display *LCDConsumer, lcdEventInput chan *LcdEvent) {
+func monitorlcdEventInputChannel(display *LCDConsumer, lcdEventInput chan events.Event) {
 	for {
 		incomingEvent := <-lcdEventInput
-		display.displayEvent(incomingEvent)
+		var incomingLcdEvent *LcdEvent
+
+		switch incomingEvent.Type {
+		case "pushbullet":
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 5*time.Second, BEFORE, 1, true)
+		case "bmp":
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 3*time.Second, NO_FLASH, 1, false)
+		case "systeminfo":
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 3*time.Second, NO_FLASH, 1, false)
+		case "shutdown":
+			incomingLcdEvent = newShutdownEvent()
+		default:
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 5*time.Second, NO_FLASH, 1, false)
+		}
+
+		display.displayEvent(incomingLcdEvent)
 	}
 
 }
