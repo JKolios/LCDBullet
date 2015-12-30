@@ -1,6 +1,7 @@
 package systeminfo
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -29,8 +30,15 @@ func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 		if err != nil {
 			log.Fatal("Failed while getting uptime")
 		}
-		uptimeStr := "Uptime:" + time.Duration(time.Duration(int64(uptime.Total))*time.Second).String()
-		uptimeEvent := events.Event{uptimeStr, "systeminfo", producer}
+
+		load, err := linuxproc.ReadLoadAvg("/proc/loadavg")
+		if err != nil {
+			log.Fatal("Failed while getting uptime")
+		}
+
+		uptimeStr := fmt.Sprintf("Up:%v ", time.Duration(time.Duration(int64(uptime.Total))*time.Second).String())
+		loadStr := fmt.Sprintf("Load:%v %v %v", load.Last1Min, load.Last5Min, load.Last15Min)
+		uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", producer}
 
 		producer.outputChan <- uptimeEvent
 		time.Sleep(every)

@@ -2,6 +2,7 @@ package bmp
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -26,6 +27,7 @@ func (producer *BMPProducer) Initialize(config conf.Configuration) {
 
 func (producer *BMPProducer) Subscribe(producerChan chan events.Event) {
 	producer.outputChan = producerChan
+	log.Println("Starting BMP085 polling")
 	go pollBMP085(producer, 10*time.Second)
 }
 
@@ -44,7 +46,7 @@ func pollBMP085(producer *BMPProducer, every time.Duration) {
 		pressStr := strconv.Itoa(pressure)
 		altStr := strconv.FormatFloat(altitude, 'f', 2, 64)
 
-		finalMessage := fmt.Sprintf("%v T:%v P:%v A:%v", time.Now().Format(time.Kitchen), tempStr, pressStr, altStr)
+		finalMessage := fmt.Sprintf("BMP: %v T:%v P:%v A:%v", time.Now().Format(time.Kitchen), tempStr, pressStr, altStr)
 		finalEvent := events.Event{finalMessage, "bmp", producer}
 
 		producer.outputChan <- finalEvent

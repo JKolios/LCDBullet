@@ -29,7 +29,7 @@ type wsMessage struct {
 
 func (producer *PushbulletProducer) Initialize(config conf.Configuration) {
 	producer.control = make(chan int)
-	producer.token = config.ApiToken
+	producer.token = config.PushbulletApiToken
 
 }
 
