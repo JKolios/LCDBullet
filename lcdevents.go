@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/JKolios/goLcdEvents/conf"
 	"github.com/JKolios/goLcdEvents/consumers/httplog"
@@ -25,13 +26,13 @@ func eventHub(producerChan chan events.Event, consumerChans []chan events.Event,
 
 		select {
 		case incoming = <-producerChan:
-			log.Println(incoming)
+			log.Printf("Hub got event: %+v\n", incoming)
 			for _, consumerChan := range consumerChans {
 				consumerChan <- incoming
 			}
 		case <-control:
 
-			shutdownEvent := events.Event{false, "shutdown", nil}
+			shutdownEvent := events.Event{false, "shutdown", nil, time.Now()}
 			for _, consumerChan := range consumerChans {
 				consumerChan <- shutdownEvent
 			}

@@ -37,21 +37,22 @@ func newDisplayEvent(message string, duration time.Duration, flash int, flashRep
 }
 
 func monitorlcdEventInputChannel(display *LCDConsumer, lcdEventInput chan events.Event) {
+	var incomingEvent events.Event
+	var incomingLcdEvent *LcdEvent
 	for {
-		incomingEvent := <-lcdEventInput
-		var incomingLcdEvent *LcdEvent
+		incomingEvent = <-lcdEventInput
 
 		switch incomingEvent.Type {
 		case "pushbullet":
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 5*time.Second, BEFORE, 1, true)
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, BEFORE, 1, true)
 		case "bmp":
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 3*time.Second, NO_FLASH, 1, false)
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 		case "systeminfo":
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 3*time.Second, NO_FLASH, 1, false)
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 		case "shutdown":
 			incomingLcdEvent = newShutdownEvent()
 		default:
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 5*time.Second, NO_FLASH, 1, false)
+			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 		}
 
 		display.displayEvent(incomingLcdEvent)

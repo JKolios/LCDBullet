@@ -48,13 +48,14 @@ func (producer *WundergroundProducer) Subscribe(producerChan chan events.Event) 
 
 func pollWunderground(producer *WundergroundProducer, every time.Duration) {
 	for {
-
+		log.Println("Starting wunderground polling")
 		conditions := getCurrentConditions(producer.token, producer.location)
 
 		finalMessage := fmt.Sprintf("%v Temp:%v Feels like:%v", conditions.Weather, conditions.Temp_c, conditions.Feelslike_c)
-		finalEvent := events.Event{finalMessage, "wunderground", producer}
+		finalEvent := events.Event{finalMessage, "wunderground", producer, time.Now()}
 
 		producer.output <- finalEvent
+		log.Println("Wunderground polling done")
 		time.Sleep(every)
 
 	}
@@ -85,14 +86,11 @@ func getCurrentConditions(token, location string) Observation {
 		return responseStruct.Obs
 	}
 
-	log.Println(string(response))
-
 	err = json.Unmarshal(response, &responseStruct)
 	if err != nil {
 		log.Println("Error unmarshalling JSON response:" + err.Error())
 		return responseStruct.Obs
 	}
 
-	log.Println(responseStruct)
 	return responseStruct.Obs
 }

@@ -26,6 +26,7 @@ func (producer *SystemInfoProducer) Subscribe(producerChan chan events.Event) {
 
 func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 	for {
+		log.Println("Starting systeminfo polling")
 		uptime, err := linuxproc.ReadUptime("/proc/uptime")
 		if err != nil {
 			log.Fatal("Failed while getting uptime")
@@ -38,9 +39,10 @@ func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 
 		uptimeStr := fmt.Sprintf("Up:%v ", time.Duration(time.Duration(int64(uptime.Total))*time.Second).String())
 		loadStr := fmt.Sprintf("Load:%v %v %v", load.Last1Min, load.Last5Min, load.Last15Min)
-		uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", producer}
+		uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", producer, time.Now()}
 
 		producer.outputChan <- uptimeEvent
+		log.Println("Systeminfo polling done")
 		time.Sleep(every)
 	}
 

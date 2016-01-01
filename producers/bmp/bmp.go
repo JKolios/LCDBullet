@@ -27,12 +27,13 @@ func (producer *BMPProducer) Initialize(config conf.Configuration) {
 
 func (producer *BMPProducer) Subscribe(producerChan chan events.Event) {
 	producer.outputChan = producerChan
-	log.Println("Starting BMP085 polling")
+	log.Println("Initializing BMP085 polling")
 	go pollBMP085(producer, 10*time.Second)
 }
 
 func pollBMP085(producer *BMPProducer, every time.Duration) {
 	for {
+		log.Println("Starting BMP085 polling")
 		temperature, err := producer.sensor.Temperature()
 		utils.LogErrorandExit("Cannot get temperature", err)
 
@@ -46,10 +47,11 @@ func pollBMP085(producer *BMPProducer, every time.Duration) {
 		pressStr := strconv.Itoa(pressure)
 		altStr := strconv.FormatFloat(altitude, 'f', 2, 64)
 
-		finalMessage := fmt.Sprintf("BMP: %v T:%v P:%v A:%v", time.Now().Format(time.Kitchen), tempStr, pressStr, altStr)
-		finalEvent := events.Event{finalMessage, "bmp", producer}
+		finalMessage := fmt.Sprintf("Temp:%v Pressure:%v Altitude:%v", tempStr, pressStr, altStr)
+		finalEvent := events.Event{finalMessage, "bmp", producer, time.Now()}
 
 		producer.outputChan <- finalEvent
+		log.Println("BMP085 polling done")
 		time.Sleep(every)
 
 	}

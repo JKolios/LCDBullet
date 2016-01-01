@@ -1,6 +1,10 @@
 package events
 
-import "github.com/JKolios/goLcdEvents/conf"
+import (
+	"time"
+
+	"github.com/JKolios/goLcdEvents/conf"
+)
 
 type Producer interface {
 	Initialize(config conf.Configuration)
@@ -13,7 +17,8 @@ type Consumer interface {
 }
 
 type Event struct {
-	Payload interface{}
-	Type    string
-	From    Producer
+	Payload   interface{}
+	Type      string
+	From      Producer
+	CreatedOn time.Time
 }

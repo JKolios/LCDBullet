@@ -82,7 +82,7 @@ func pushbulletMonitor(producer *PushbulletProducer) {
 
 					for _, push := range ListPushesResponse.Pushes {
 
-						pushEvent := events.Event{push.Body, "pushbullet", producer}
+						pushEvent := events.Event{push.Body, "pushbullet", producer, time.Now()}
 						producer.output <- pushEvent
 						lastcheckTimestamp = push.Modified
 
@@ -113,7 +113,7 @@ func wsMessagePump(conn *websocket.Conn, messageChannel chan wsMessage, control 
 			}
 		default:
 			err := conn.ReadJSON(&message)
-			log.Println("Parsing message")
+			// log.Println("Parsing message")
 			if err != nil {
 				log.Println("Error while parsing message" + err.Error())
 			}

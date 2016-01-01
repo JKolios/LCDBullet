@@ -3,7 +3,6 @@ package lcd
 import (
 	"log"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/JKolios/goLcdEvents/utils"
@@ -16,7 +15,7 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 	if len(bytes) < 16 {
 		rightBound = len(bytes)
 	}
-	log.Println("Line 0: " + string(bytes[0:rightBound]))
+	// log.Println("Line 0: " + string(bytes[0:rightBound]))
 	for _, char := range bytes[0:rightBound] {
 		err := display.Driver.WriteChar(char)
 		utils.LogErrorandExit("Cannot write char to LCD:", err)
@@ -29,7 +28,7 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 		if len(bytes) < 32 {
 			rightBound = len(bytes)
 		}
-		log.Println("Line 1: " + string(bytes[16:rightBound]))
+		// log.Println("Line 1: " + string(bytes[16:rightBound]))
 
 		for _, char := range bytes[16:rightBound] {
 			err := display.Driver.WriteChar(char)
@@ -43,7 +42,7 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 //DisplayMessage shows the given message on the display. The message is split in pages if needed (no scrolling is used)
 //In general, only strings that can be mapped onto ASCII can be displayed correctly.
 func (display *LCDConsumer) displayEvent(event *LcdEvent) {
-	log.Println("Displaying message: " + event.message)
+	log.Println("LCD: Displaying message: " + event.message)
 	err := display.Driver.Clear()
 	utils.LogErrorandExit("Cannot clear LCD:", err)
 
@@ -54,18 +53,18 @@ func (display *LCDConsumer) displayEvent(event *LcdEvent) {
 	bytes := []byte(event.message)
 
 	frames := int(math.Ceil(float64(len(bytes)) / 32.0))
-	log.Println("Frames: " + strconv.Itoa(frames))
+	// log.Println("Frames: " + strconv.Itoa(frames))
 	frametime := int64(math.Ceil(float64(event.duration) / float64(frames)))
-	log.Println("Frame time: " + strconv.Itoa(int(frametime)))
+	// log.Println("Frame time: " + strconv.Itoa(int(frametime)))
 
 	for i := 0; i < frames; i++ {
-		log.Printf("Displaying frame %v\n", i)
+		// log.Printf("Displaying frame %v\n", i)
 		rightBound := (i + 1) * 32
 
 		if rightBound > len(bytes) {
 			rightBound = len(bytes)
 		}
-		log.Println("Frame Content: " + string(bytes[i*32:rightBound]))
+		// log.Println("Frame Content: " + string(bytes[i*32:rightBound]))
 		display.displaySingleFrame(bytes[i*32:rightBound], time.Duration(frametime))
 
 		if i != (frames-1) || event.clearAfter {
