@@ -19,8 +19,8 @@ type HttpConsumer struct {
 
 func (consumer *HttpConsumer) Initialize(config conf.Configuration) {
 	// Config Parsing
-	consumer.listenAddress = config.ListenAddress
-	consumer.endpoint = config.Endpoint
+	consumer.listenAddress = config.HTTPLogListenAddress
+	consumer.endpoint = config.HTTPLogEndpoint
 }
 
 func (consumer *HttpConsumer) Register(EventInput chan events.Event) {

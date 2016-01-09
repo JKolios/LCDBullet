@@ -16,6 +16,7 @@ import (
 	"github.com/JKolios/goLcdEvents/producers/pushbullet"
 	"github.com/JKolios/goLcdEvents/producers/systeminfo"
 	"github.com/JKolios/goLcdEvents/producers/wunderground"
+	"github.com/JKolios/goLcdEvents/producers/bitcoinaverage"
 	"github.com/JKolios/goLcdEvents/utils"
 	_ "github.com/kidoman/embd/host/rpi"
 )
@@ -130,6 +131,10 @@ func main() {
 
 	if utils.SliceContains(config.Producers, "wunderground") {
 		Producers = append(Producers, &wunderground.WundergroundProducer{})
+	}
+
+	if utils.SliceContains(config.Producers, "bitcoinaverage") {
+		Producers = append(Producers, &bitcoinaverage.BitcoinAverageProducer{})
 	}
 
 	producerChan := make(chan events.Event)

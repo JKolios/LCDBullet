@@ -53,7 +53,7 @@ func pollWunderground(producer *WundergroundProducer, every time.Duration) {
 		conditions := getCurrentConditions(producer.token, producer.location)
 
 		finalMessage := fmt.Sprintf("%v Temp:%v Feels like:%v", conditions.Weather, conditions.Temp_c, conditions.Feelslike_c)
-		finalEvent := events.Event{finalMessage, "wunderground", producer, time.Now(), events.PRIORITY_LOW}
+		finalEvent := events.Event{finalMessage, "wunderground", producer, time.Now(), events.PRIORITY_HIGH}
 
 		producer.output <- finalEvent
 		log.Println("Wunderground polling done")
@@ -69,27 +69,27 @@ func getCurrentConditions(token, location string) Observation {
 	req, err := http.NewRequest("GET", requestUrl, nil)
 	if err != nil {
 		log.Println("Error constructing API request:" + err.Error())
-		return responseStruct.Obs
+		return Observation{}
 
 	}
 	req.Header.Add("Access-Token", token)
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Println("Error sending API request:" + err.Error())
-		return responseStruct.Obs
+		return Observation{}
 	}
 	defer resp.Body.Close()
 
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading JSON response:" + err.Error())
-		return responseStruct.Obs
+		return Observation{}
 	}
 
 	err = json.Unmarshal(response, &responseStruct)
 	if err != nil {
 		log.Println("Error unmarshalling JSON response:" + err.Error())
-		return responseStruct.Obs
+		return Observation{}
 	}
 
 	return responseStruct.Obs

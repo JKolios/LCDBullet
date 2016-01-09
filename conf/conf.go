@@ -14,8 +14,9 @@ type Configuration struct {
 	WundergroundApiToken string   `json:"wundergroundApiToken"`
 	WundergroundLocation string   `json:"wundergroundLocation"`
 	BlPolarity           bool     `json:"BlPolarity"`
-	ListenAddress        string   `json:"ListenAddress"`
-	Endpoint             string   `json:"Endpoint"`
+	HTTPLogListenAddress        string   `json:"ListenAddress"`
+	HTTPLogEndpoint             string   `json:"Endpoint"`
+	BitcoinAverageCurrency string `json:"BitcoinAverageCurrency"`
 }
 
 func ParseJSONConf(filename string) (Configuration, error) {
