@@ -76,6 +76,11 @@ func (display *LCDConsumer) displayEvent(event *LcdEvent) {
 	if event.flash == AFTER || event.flash == BEFORE_AND_AFTER {
 		display.flashDisplay(event.flashRepetitions, 1*time.Second)
 	}
+
+	if event.eventType == EVENT_SHUTDOWN {
+		log.Println("LCD: Driver shutting down...")
+		display.Driver.Close()
+	}
 }
 
 //FlashDisplay will trigger the LCD's display on and off

@@ -82,7 +82,7 @@ func pushbulletMonitor(producer *PushbulletProducer) {
 
 					for _, push := range ListPushesResponse.Pushes {
 
-						pushEvent := events.Event{push.Body, "pushbullet", producer, time.Now()}
+						pushEvent := events.Event{push.Body, "pushbullet", producer, time.Now(), events.PRIORITY_HIGH}
 						producer.output <- pushEvent
 						lastcheckTimestamp = push.Modified
 

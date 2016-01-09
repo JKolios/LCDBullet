@@ -32,6 +32,7 @@ func (producer *BMPProducer) Subscribe(producerChan chan events.Event) {
 }
 
 func pollBMP085(producer *BMPProducer, every time.Duration) {
+	tick := time.Tick(every)
 	for {
 		log.Println("Starting BMP085 polling")
 		temperature, err := producer.sensor.Temperature()
@@ -48,11 +49,11 @@ func pollBMP085(producer *BMPProducer, every time.Duration) {
 		altStr := strconv.FormatFloat(altitude, 'f', 2, 64)
 
 		finalMessage := fmt.Sprintf("Temp:%v Pressure:%v Altitude:%v", tempStr, pressStr, altStr)
-		finalEvent := events.Event{finalMessage, "bmp", producer, time.Now()}
+		finalEvent := events.Event{finalMessage, "bmp", producer, time.Now(), events.PRIORITY_LOW}
 
 		producer.outputChan <- finalEvent
 		log.Println("BMP085 polling done")
-		time.Sleep(every)
+		<- tick
 
 	}
 }

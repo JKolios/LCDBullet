@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/JKolios/goLcdEvents/events"
+	"log"
 )
 
 const (
@@ -28,34 +29,33 @@ func newLcdEvent(eventType int, message string, duration time.Duration, flash in
 	return &LcdEvent{eventType, message, duration, flash, flashRepetitions, clearAfter}
 }
 
-func newShutdownEvent() *LcdEvent {
-	return &LcdEvent{EVENT_SHUTDOWN, "", 0 * time.Second, 0, 0, true}
-}
-
-func newDisplayEvent(message string, duration time.Duration, flash int, flashRepetitions int, clearAfter bool) *LcdEvent {
-	return &LcdEvent{EVENT_DISPLAY, message, duration, flash, flashRepetitions, clearAfter}
-}
-
 func monitorlcdEventInputChannel(display *LCDConsumer, lcdEventInput chan events.Event) {
 	var incomingEvent events.Event
 	var incomingLcdEvent *LcdEvent
+
+	EventLoop:
 	for {
 		incomingEvent = <-lcdEventInput
 
 		switch incomingEvent.Type {
 		case "pushbullet":
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, BEFORE, 1, true)
+			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY,incomingEvent.Payload.(string), 8*time.Second, BEFORE, 1, true)
 		case "bmp":
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
+			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 		case "systeminfo":
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
+			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 		case "shutdown":
-			incomingLcdEvent = newShutdownEvent()
-		default:
-			incomingLcdEvent = newDisplayEvent(incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
-		}
+			incomingLcdEvent = newLcdEvent(EVENT_SHUTDOWN, "Shutting down...", 5 * time.Second, BEFORE, 1, true)
+			display.displayEvent(incomingLcdEvent)
+			break EventLoop
 
+		default:
+			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
+		}
 		display.displayEvent(incomingLcdEvent)
+
 	}
+	log.Println("LCD monitor goroutine exiting...")
+	lcdEventInput <- incomingEvent
 
 }

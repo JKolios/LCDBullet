@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"container/list"
 
 	"github.com/JKolios/goLcdEvents/conf"
 	"github.com/JKolios/goLcdEvents/consumers/httplog"
@@ -19,29 +20,68 @@ import (
 	_ "github.com/kidoman/embd/host/rpi"
 )
 
-func eventHub(producerChan chan events.Event, consumerChans []chan events.Event, control chan os.Signal) {
-	var incoming events.Event
-	for {
-		log.Println("Hub iteration")
+var highPriorityeventList = list.New()
+var lowPriorityeventList = list.New()
 
-		select {
-		case incoming = <-producerChan:
-			log.Printf("Hub got event: %+v\n", incoming)
-			for _, consumerChan := range consumerChans {
-				consumerChan <- incoming
+func producerHub(producerChan chan events.Event, control chan os.Signal) {
+
+	var incomingEvent events.Event
+
+	ReceiveLoop:
+		for {
+			select {
+			case incomingEvent = <-producerChan:
+				log.Printf("producerHub got event: %+v\n", incomingEvent)
+				// Inspect the event and handle according to type and priority
+				if incomingEvent.Priority == events.PRIORITY_HIGH {
+					highPriorityeventList.PushBack(incomingEvent)
+				}else{
+					lowPriorityeventList.PushBack(incomingEvent)
+				}
+			case <-control:
+				log.Println("producerHub got an OS signal, enqueueing shutdown event")
+				shutdownEvent := events.Event{false, "shutdown", nil, time.Now(), events.PRIORITY_IMMEDIATE}
+				highPriorityeventList.PushFront(shutdownEvent)
+				log.Println("producerHub halting")
+				control <- syscall.SIGINT
+				break ReceiveLoop
+
 			}
-		case <-control:
-
-			shutdownEvent := events.Event{false, "shutdown", nil, time.Now()}
-			for _, consumerChan := range consumerChans {
-				consumerChan <- shutdownEvent
-			}
-			producerChan <- shutdownEvent
-			control <- syscall.SIGINT
-
 		}
-	}
 }
+
+
+func consumerHub(consumerChans []chan events.Event, control chan os.Signal) {
+
+	var selectedEvent events.Event
+
+	SendLoop:
+		for {
+			if highPriorityeventList.Len() > 0 {
+				selectedEvent = highPriorityeventList.Remove(highPriorityeventList.Front()).(events.Event)
+			}else if lowPriorityeventList.Len() > 0 {
+				selectedEvent = lowPriorityeventList.Remove(lowPriorityeventList.Front()).(events.Event)
+			}else {
+				continue
+			}
+
+
+			log.Printf("consumerHub selected event: %+v \n", selectedEvent)
+
+			for _, consumerChan := range (consumerChans) {
+				consumerChan <- selectedEvent
+			}
+
+			if selectedEvent.Type == "shutdown" {
+				log.Println("consumerHub halting")
+				control <- syscall.SIGINT
+				break SendLoop
+			}
+
+			}
+		}
+
+
 
 func main() {
 	config, err := conf.ParseJSONConf("conf.json")
@@ -67,7 +107,7 @@ func main() {
 
 	for _, consumer := range Consumers {
 		consumer.Initialize(config)
-		newChan = make(chan events.Event, 100)
+		newChan = make(chan events.Event)
 		consumer.Register(newChan)
 		consumerChannels = append(consumerChannels, newChan)
 	}
@@ -92,7 +132,7 @@ func main() {
 		Producers = append(Producers, &wunderground.WundergroundProducer{})
 	}
 
-	producerChan := make(chan events.Event, 100)
+	producerChan := make(chan events.Event)
 
 	for _, producer := range Producers {
 		producer.Initialize(config)
@@ -100,10 +140,15 @@ func main() {
 
 	}
 
-	controlChan := make(chan os.Signal, 1)
+	controlChan := make(chan os.Signal)
 	signal.Notify(controlChan, os.Interrupt, os.Kill)
 
-	go eventHub(producerChan, consumerChannels, controlChan)
+	go producerHub(producerChan, controlChan)
+	go consumerHub(consumerChannels, controlChan)
 
-	<-controlChan
+	controlChan <- <- controlChan
+	log.Println("Main got an OS signal, bouncing...")
+	<- controlChan
+	<- controlChan
+	time.Sleep(10 * time.Second)
 }

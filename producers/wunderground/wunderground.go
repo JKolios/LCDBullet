@@ -47,17 +47,17 @@ func (producer *WundergroundProducer) Subscribe(producerChan chan events.Event) 
 }
 
 func pollWunderground(producer *WundergroundProducer, every time.Duration) {
+	tick := time.Tick(every)
 	for {
 		log.Println("Starting wunderground polling")
 		conditions := getCurrentConditions(producer.token, producer.location)
 
 		finalMessage := fmt.Sprintf("%v Temp:%v Feels like:%v", conditions.Weather, conditions.Temp_c, conditions.Feelslike_c)
-		finalEvent := events.Event{finalMessage, "wunderground", producer, time.Now()}
+		finalEvent := events.Event{finalMessage, "wunderground", producer, time.Now(), events.PRIORITY_LOW}
 
 		producer.output <- finalEvent
 		log.Println("Wunderground polling done")
-		time.Sleep(every)
-
+		<- tick
 	}
 }
 

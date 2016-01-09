@@ -35,11 +35,18 @@ func (consumer *HttpConsumer) Register(EventInput chan events.Event) {
 }
 
 func monitorInput(inputChan chan events.Event) {
+	EventLoop:
 	for {
 		incomingEvent := <-inputChan
-		eventAsText := fmt.Sprintf("%s:%s\n", incomingEvent.Type, incomingEvent.Payload.(string))
-		httpContent <- eventAsText
+		if incomingEvent.Type == "shutdown" {
+			break EventLoop
+
+		}else {
+			eventAsText := fmt.Sprintf("%s:%s\n", incomingEvent.Type, incomingEvent.Payload.(string))
+			httpContent <- eventAsText
+		}
 	}
+	log.Println("HTTP Log exiting...")
 
 }
 

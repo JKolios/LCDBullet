@@ -6,6 +6,12 @@ import (
 	"github.com/JKolios/goLcdEvents/conf"
 )
 
+const (
+	PRIORITY_IMMEDIATE = 2
+	PRIORITY_HIGH = 1
+	PRIORITY_LOW = 0
+)
+
 type Producer interface {
 	Initialize(config conf.Configuration)
 	Subscribe(chan Event)
@@ -21,4 +27,5 @@ type Event struct {
 	Type      string
 	From      Producer
 	CreatedOn time.Time
+	Priority int
 }
