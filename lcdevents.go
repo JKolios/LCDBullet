@@ -11,6 +11,7 @@ import (
 	"github.com/JKolios/goLcdEvents/conf"
 	"github.com/JKolios/goLcdEvents/consumers/httplog"
 	"github.com/JKolios/goLcdEvents/consumers/lcd"
+	"github.com/JKolios/goLcdEvents/consumers/wsclient"
 	"github.com/JKolios/goLcdEvents/events"
 	"github.com/JKolios/goLcdEvents/producers/bmp"
 	"github.com/JKolios/goLcdEvents/producers/pushbullet"
@@ -101,6 +102,10 @@ func main() {
 
 	if utils.SliceContains(config.Consumers, "httplog") {
 		Consumers = append(Consumers, &httplog.HttpConsumer{})
+	}
+
+	if utils.SliceContains(config.Consumers, "wsclient") {
+		Consumers = append(Consumers, &wsclient.WebsocketConsumer{})
 	}
 
 	var consumerChannels []chan events.Event

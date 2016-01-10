@@ -17,6 +17,9 @@ type Configuration struct {
 	HTTPLogListenAddress        string   `json:"ListenAddress"`
 	HTTPLogEndpoint             string   `json:"Endpoint"`
 	BitcoinAverageCurrency string `json:"BitcoinAverageCurrency"`
+	WSClientHost string `json:"WSClientHost"`
+	WSClientEndpoint string `json:"WSClientEndpoint"`
+	WSClientListenAddress string `json:"WSClientListenAddress"`
 }
 
 func ParseJSONConf(filename string) (Configuration, error) {
