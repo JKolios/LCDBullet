@@ -15,6 +15,8 @@ type WebsocketConsumer struct {
 	WSClientHost string
 	WSClientEndpoint      string
 	WSClientListenAddress string
+	inputChan <-chan events.Event
+	done <-chan struct{}
 }
 
 var clientTemplate *template.Template
@@ -91,10 +93,9 @@ func (consumer *WebsocketConsumer) Initialize(config conf.Configuration) {
 	log.Println("Websocket Consumer: initialized, template loaded")
 }
 
-func (consumer *WebsocketConsumer) Register(EventInput chan events.Event) {
+func (consumer *WebsocketConsumer) Start(done <-chan struct{}, EventInput <-chan events.Event) {
 
-	// Input Monitor Goroutine Startup
-	go monitorInput(EventInput)
+	consumer.done = done
 
 	//Websocket Endpoint Startup
 	http.HandleFunc("/dataSource", WSEndpointHandler)
@@ -102,16 +103,27 @@ func (consumer *WebsocketConsumer) Register(EventInput chan events.Event) {
 
 	go http.ListenAndServe(consumer.WSClientListenAddress, nil)
 	log.Println("Websocket Consumer: started, listening at " + consumer.WSClientHost + consumer.WSClientEndpoint)
+
+	// Input Monitor Goroutine Startup
+	go monitorWebsocketProducerInput(consumer)
 }
 
 
-func monitorInput(inputChan chan events.Event) {
+func monitorWebsocketProducerInput(consumer *WebsocketConsumer) {
 	var incomingEvent events.Event
 
 	for {
-		incomingEvent = <- inputChan
-		wsContent <- fmt.Sprintf("%s:%s\n", incomingEvent.Type, incomingEvent.Payload.(string))
+		select {
+		case <-consumer.done:
+			{
+				log.Println("monitorWebsocketProducerInput Terminated")
+				return
+			}
+		default:
+			incomingEvent = <-consumer.inputChan
+			wsContent <- fmt.Sprintf("%s:%s\n", incomingEvent.Type, incomingEvent.Payload.(string))
 
+		}
 	}
 
 }

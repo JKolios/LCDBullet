@@ -18,7 +18,8 @@ const (
 
 type BitcoinAverageProducer struct {
 	currencySymbol string
-	output   chan events.Event
+	output   chan<- events.Event
+	done <-chan struct{}
 }
 
 type apiResponse struct {
@@ -37,24 +38,33 @@ func (producer *BitcoinAverageProducer) Initialize(config conf.Configuration) {
 
 }
 
-func (producer *BitcoinAverageProducer) Subscribe(producerChan chan events.Event) {
+func (producer *BitcoinAverageProducer) Start(done <-chan struct{}, EventOutput chan<- events.Event) {
 
-	producer.output = producerChan
+	producer.output = EventOutput
+	producer.done = done
 	go pollBitcoinAverage(producer, 30*time.Second)
 }
 
 func pollBitcoinAverage(producer *BitcoinAverageProducer, every time.Duration) {
 	tick := time.Tick(every)
 	for {
-		log.Println("Starting bitcoinaverage polling")
-		averages := getCurrentBTCAverages(producer.currencySymbol)
+		select {
+		case <-producer.done:
+			{
+				log.Println("pollBitcoinAverage Terminated")
+				return
+			}
+		default:
+			log.Println("Starting bitcoinaverage polling")
+			averages := getCurrentBTCAverages(producer.currencySymbol)
 
-		finalMessage := fmt.Sprintf("Bitcoin Global Average: Ask: %v Bid:%v Last:%v 24H Average: %v", averages.Ask, averages.Bid, averages.Last, averages.Avg24h)
-		finalEvent := events.Event{finalMessage, "bitcoinaverage", producer, time.Now(), events.PRIORITY_LOW}
+			finalMessage := fmt.Sprintf("Bitcoin Global Average: Ask: %v Bid:%v Last:%v 24H Average: %v", averages.Ask, averages.Bid, averages.Last, averages.Avg24h)
+			finalEvent := events.Event{finalMessage, "bitcoinaverage", producer, time.Now(), events.PRIORITY_LOW}
 
-		producer.output <- finalEvent
-		log.Println("Wunderground polling done")
-		<- tick
+			producer.output <- finalEvent
+			log.Println("Wunderground polling done")
+			<-tick
+		}
 	}
 }
 

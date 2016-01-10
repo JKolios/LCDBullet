@@ -11,7 +11,8 @@ import (
 )
 
 type SystemInfoProducer struct {
-	outputChan chan events.Event
+	outputChan chan<- events.Event
+	done <-chan struct{}
 }
 
 func (producer *SystemInfoProducer) Initialize(config conf.Configuration) {
@@ -19,32 +20,40 @@ func (producer *SystemInfoProducer) Initialize(config conf.Configuration) {
 	return
 }
 
-func (producer *SystemInfoProducer) Subscribe(producerChan chan events.Event) {
-	producer.outputChan = producerChan
+func (producer *SystemInfoProducer) Start(done <-chan struct{}, EventOutput chan<- events.Event) {
+	producer.outputChan = EventOutput
+	producer.done = done
 	go pollSystemInfo(producer, time.Second*10)
 }
 
 func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 	tick := time.Tick(every)
 	for {
-		log.Println("Starting systeminfo polling")
-		uptime, err := linuxproc.ReadUptime("/proc/uptime")
-		if err != nil {
-			log.Fatal("Failed while getting uptime")
+		select {
+		case <-producer.done:
+			{
+				log.Println("pollSystemInfo Terminated")
+				return
+			}
+			log.Println("Starting systeminfo polling")
+			uptime, err := linuxproc.ReadUptime("/proc/uptime")
+			if err != nil {
+				log.Fatal("Failed while getting uptime")
+			}
+
+			load, err := linuxproc.ReadLoadAvg("/proc/loadavg")
+			if err != nil {
+				log.Fatal("Failed while getting uptime")
+			}
+
+			uptimeStr := fmt.Sprintf("Up:%v ", time.Duration(time.Duration(int64(uptime.Total)) * time.Second).String())
+			loadStr := fmt.Sprintf("Load:%v %v %v", load.Last1Min, load.Last5Min, load.Last15Min)
+			uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", producer, time.Now(), events.PRIORITY_LOW}
+
+			producer.outputChan <- uptimeEvent
+			log.Println("Systeminfo polling done")
+			<-tick
 		}
-
-		load, err := linuxproc.ReadLoadAvg("/proc/loadavg")
-		if err != nil {
-			log.Fatal("Failed while getting uptime")
-		}
-
-		uptimeStr := fmt.Sprintf("Up:%v ", time.Duration(time.Duration(int64(uptime.Total))*time.Second).String())
-		loadStr := fmt.Sprintf("Load:%v %v %v", load.Last1Min, load.Last5Min, load.Last15Min)
-		uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", producer, time.Now(), events.PRIORITY_LOW}
-
-		producer.outputChan <- uptimeEvent
-		log.Println("Systeminfo polling done")
-		<- tick
 	}
 
 }

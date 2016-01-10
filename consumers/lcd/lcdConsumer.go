@@ -10,7 +10,8 @@ import (
 
 type LCDConsumer struct {
 	Driver        *hd44780.HD44780
-	LcdEventInput chan events.Event
+	inputChan <-chan events.Event
+	done <-chan struct{}
 }
 
 func (consumer *LCDConsumer) Initialize(config conf.Configuration) {
@@ -28,9 +29,10 @@ func (consumer *LCDConsumer) Initialize(config conf.Configuration) {
 
 }
 
-func (consumer *LCDConsumer) Register(LcdEventInput chan events.Event) {
+func (consumer *LCDConsumer) Start(done <-chan struct{}, EventInput <-chan events.Event) {
 
-	consumer.LcdEventInput = LcdEventInput
+	consumer.inputChan = EventInput
+	consumer.done = done
 	// Input Monitor Goroutine Startup
-	go monitorlcdEventInputChannel(consumer, LcdEventInput)
+	go monitorlcdEventInputChannel(consumer)
 }

@@ -19,7 +19,8 @@ const (
 type WundergroundProducer struct {
 	token    string
 	location string
-	output   chan events.Event
+	output   chan<- events.Event
+	done <-chan struct{}
 }
 
 type apiResponse struct {
@@ -40,24 +41,34 @@ func (producer *WundergroundProducer) Initialize(config conf.Configuration) {
 
 }
 
-func (producer *WundergroundProducer) Subscribe(producerChan chan events.Event) {
+func (producer *WundergroundProducer) Start(done <-chan struct{}, EventOutput chan<- events.Event) {
 
-	producer.output = producerChan
-	go pollWunderground(producer, 30*time.Second)
+	producer.output = EventOutput
+	producer.done = done
+
+	go pollWunderground(producer, 60*time.Second)
 }
 
 func pollWunderground(producer *WundergroundProducer, every time.Duration) {
 	tick := time.Tick(every)
 	for {
-		log.Println("Starting wunderground polling")
-		conditions := getCurrentConditions(producer.token, producer.location)
+		select {
+		case <-producer.done:
+			{
+				log.Println("pollWunderground Terminated")
+				return
+			}
+		default:
+			log.Println("Starting wunderground polling")
+			conditions := getCurrentConditions(producer.token, producer.location)
 
-		finalMessage := fmt.Sprintf("%v Temp:%v Feels like:%v", conditions.Weather, conditions.Temp_c, conditions.Feelslike_c)
-		finalEvent := events.Event{finalMessage, "wunderground", producer, time.Now(), events.PRIORITY_HIGH}
+			finalMessage := fmt.Sprintf("%v Temp:%v Feels like:%v", conditions.Weather, conditions.Temp_c, conditions.Feelslike_c)
+			finalEvent := events.Event{finalMessage, "wunderground", producer, time.Now(), events.PRIORITY_HIGH}
 
-		producer.output <- finalEvent
-		log.Println("Wunderground polling done")
-		<- tick
+			producer.output <- finalEvent
+			log.Println("Wunderground polling done")
+			<-tick
+		}
 	}
 }
 

@@ -15,6 +15,8 @@ var httpContent = make(chan string)
 type HttpConsumer struct {
 	listenAddress string
 	endpoint      string
+	inputChan <-chan events.Event
+	done <-chan struct{}
 }
 
 func (consumer *HttpConsumer) Initialize(config conf.Configuration) {
@@ -23,10 +25,12 @@ func (consumer *HttpConsumer) Initialize(config conf.Configuration) {
 	consumer.endpoint = config.HTTPLogEndpoint
 }
 
-func (consumer *HttpConsumer) Register(EventInput chan events.Event) {
+func (consumer *HttpConsumer) Start(done <-chan struct{}, EventInput <-chan events.Event) {
+	consumer.done = done
+	consumer.inputChan = EventInput
 
 	// Input Monitor Goroutine Startup
-	go monitorInput(EventInput)
+	go monitorHttpConsumerInput(consumer)
 
 	//HTTP Handler Startup
 	http.HandleFunc(consumer.endpoint, httpPollHandler)
@@ -34,20 +38,22 @@ func (consumer *HttpConsumer) Register(EventInput chan events.Event) {
 	log.Println("HTTP log: started, listening at " + consumer.listenAddress + consumer.endpoint)
 }
 
-func monitorInput(inputChan chan events.Event) {
-	EventLoop:
+func monitorHttpConsumerInput(consumer *HttpConsumer) {
 	for {
-		incomingEvent := <-inputChan
-		if incomingEvent.Type == "shutdown" {
-			break EventLoop
+		select {
+		case <-consumer.done:
+			{
+				log.Println("monitorWebsocketProducerInput Terminated")
+				return
+			}
+		default:
+			incomingEvent := <-consumer.inputChan
 
-		}else {
 			eventAsText := fmt.Sprintf("%s:%s\n", incomingEvent.Type, incomingEvent.Payload.(string))
 			httpContent <- eventAsText
+
 		}
 	}
-	log.Println("HTTP Log exiting...")
-
 }
 
 func httpPollHandler(w http.ResponseWriter, req *http.Request) {

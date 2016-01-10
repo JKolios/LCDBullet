@@ -14,12 +14,12 @@ const (
 
 type Producer interface {
 	Initialize(config conf.Configuration)
-	Subscribe(chan Event)
+	Start(<-chan struct{}, chan<- Event)
 }
 
 type Consumer interface {
 	Initialize(config conf.Configuration)
-	Register(chan Event)
+	Start(<-chan struct{}, <-chan Event)
 }
 
 type Event struct {

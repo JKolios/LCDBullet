@@ -4,8 +4,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"syscall"
-	"time"
 	"container/list"
 
 	"github.com/JKolios/goLcdEvents/conf"
@@ -18,20 +16,35 @@ import (
 	"github.com/JKolios/goLcdEvents/producers/systeminfo"
 	"github.com/JKolios/goLcdEvents/producers/wunderground"
 	"github.com/JKolios/goLcdEvents/producers/bitcoinaverage"
-	"github.com/JKolios/goLcdEvents/utils"
 	_ "github.com/kidoman/embd/host/rpi"
+	"time"
 )
 
 var highPriorityeventList = list.New()
 var lowPriorityeventList = list.New()
 
-func producerHub(producerChan chan events.Event, control chan os.Signal) {
+var consumerMap =  map[string]events.Consumer{
+	"lcd": &lcd.LCDConsumer{},
+	"httplog": &httplog.HttpConsumer{},
+	"wsclient": &wsclient.WebsocketConsumer{}}
+
+var producerMap =  map[string]events.Producer{
+	"pushbullet": &pushbullet.PushbulletProducer{},
+	"bmp": &bmp.BMPProducer{},
+	"systeminfo": &systeminfo.SystemInfoProducer{},
+	"wunderground":&wunderground.WundergroundProducer{},
+	"bitcoinaverage":&bitcoinaverage.BitcoinAverageProducer{}}
+
+func producerHub(done chan struct{}, producerChan chan events.Event) {
 
 	var incomingEvent events.Event
 
-	ReceiveLoop:
 		for {
 			select {
+			case <-done:
+				log.Println("producerHub halting")
+				return
+
 			case incomingEvent = <-producerChan:
 				log.Printf("producerHub got event: %+v\n", incomingEvent)
 				// Inspect the event and handle according to type and priority
@@ -40,47 +53,43 @@ func producerHub(producerChan chan events.Event, control chan os.Signal) {
 				}else{
 					lowPriorityeventList.PushBack(incomingEvent)
 				}
-			case <-control:
-				log.Println("producerHub got an OS signal, enqueueing shutdown event")
-				shutdownEvent := events.Event{false, "shutdown", nil, time.Now(), events.PRIORITY_IMMEDIATE}
-				highPriorityeventList.PushFront(shutdownEvent)
-				log.Println("producerHub halting")
-				control <- syscall.SIGINT
-				break ReceiveLoop
+
 
 			}
 		}
 }
 
 
-func consumerHub(consumerChans []chan events.Event, control chan os.Signal) {
+func consumerHub(done chan struct{}, consumerChans []chan events.Event) {
 
 	var selectedEvent events.Event
 
-	SendLoop:
 		for {
-			if highPriorityeventList.Len() > 0 {
-				selectedEvent = highPriorityeventList.Remove(highPriorityeventList.Front()).(events.Event)
-			}else if lowPriorityeventList.Len() > 0 {
-				selectedEvent = lowPriorityeventList.Remove(lowPriorityeventList.Front()).(events.Event)
-			}else {
-				continue
-			}
+			select {
 
-
-			log.Printf("consumerHub selected event: %+v \n", selectedEvent)
-
-			for _, consumerChan := range (consumerChans) {
-				consumerChan <- selectedEvent
-			}
-
-			if selectedEvent.Type == "shutdown" {
+			case <-done:
 				log.Println("consumerHub halting")
-				control <- syscall.SIGINT
-				break SendLoop
-			}
+				return
+
+			default:
+
+				if highPriorityeventList.Len() > 0 {
+					selectedEvent = highPriorityeventList.Remove(highPriorityeventList.Front()).(events.Event)
+				}else if lowPriorityeventList.Len() > 0 {
+					selectedEvent = lowPriorityeventList.Remove(lowPriorityeventList.Front()).(events.Event)
+				}else {
+					continue
+				}
+
+
+				log.Printf("consumerHub selected event: %+v \n", selectedEvent)
+
+				for _, consumerChan := range (consumerChans) {
+					consumerChan <- selectedEvent
+				}
 
 			}
+		}
 		}
 
 
@@ -90,75 +99,36 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error while parsing config: " + err.Error())
 	}
-	log.Printf("Config:%+v", config)
-
 	// Consumer Init
 
-	var Consumers []events.Consumer
-
-	if utils.SliceContains(config.Consumers, "lcd") {
-		Consumers = append(Consumers, &lcd.LCDConsumer{})
-	}
-
-	if utils.SliceContains(config.Consumers, "httplog") {
-		Consumers = append(Consumers, &httplog.HttpConsumer{})
-	}
-
-	if utils.SliceContains(config.Consumers, "wsclient") {
-		Consumers = append(Consumers, &wsclient.WebsocketConsumer{})
-	}
-
 	var consumerChannels []chan events.Event
-	var newChan chan events.Event
 
-	for _, consumer := range Consumers {
-		consumer.Initialize(config)
-		newChan = make(chan events.Event)
-		consumer.Register(newChan)
+	done := make(chan struct{})
+
+	for _, consumerName := range config.Consumers {
+		consumerMap[consumerName].Initialize(config)
+		newChan := make(chan events.Event, 100)
+		consumerMap[consumerName].Start(done, newChan)
 		consumerChannels = append(consumerChannels, newChan)
 	}
 
 	// Producer Init
-
-	var Producers []events.Producer
-
-	if utils.SliceContains(config.Producers, "pushbullet") {
-		Producers = append(Producers, &pushbullet.PushbulletProducer{})
-	}
-
-	if utils.SliceContains(config.Producers, "bmp") {
-		Producers = append(Producers, &bmp.BMPProducer{})
-	}
-
-	if utils.SliceContains(config.Producers, "systeminfo") {
-		Producers = append(Producers, &systeminfo.SystemInfoProducer{})
-	}
-
-	if utils.SliceContains(config.Producers, "wunderground") {
-		Producers = append(Producers, &wunderground.WundergroundProducer{})
-	}
-
-	if utils.SliceContains(config.Producers, "bitcoinaverage") {
-		Producers = append(Producers, &bitcoinaverage.BitcoinAverageProducer{})
-	}
-
 	producerChan := make(chan events.Event)
 
-	for _, producer := range Producers {
-		producer.Initialize(config)
-		producer.Subscribe(producerChan)
-
+	for _, producerName := range config.Producers {
+		producerMap[producerName].Initialize(config)
+		producerMap[producerName].Start(done, producerChan)
 	}
+
+	go producerHub(done, producerChan)
+	go consumerHub(done, consumerChannels)
 
 	controlChan := make(chan os.Signal)
 	signal.Notify(controlChan, os.Interrupt, os.Kill)
 
-	go producerHub(producerChan, controlChan)
-	go consumerHub(consumerChannels, controlChan)
+	<- controlChan
+	log.Println("Main got an OS signal, starting shutdown...")
+	close(done)
+	time.Sleep(30 * time.Second)
 
-	controlChan <- <- controlChan
-	log.Println("Main got an OS signal, bouncing...")
-	<- controlChan
-	<- controlChan
-	time.Sleep(10 * time.Second)
 }

@@ -29,33 +29,34 @@ func newLcdEvent(eventType int, message string, duration time.Duration, flash in
 	return &LcdEvent{eventType, message, duration, flash, flashRepetitions, clearAfter}
 }
 
-func monitorlcdEventInputChannel(display *LCDConsumer, lcdEventInput chan events.Event) {
+func monitorlcdEventInputChannel(consumer *LCDConsumer) {
 	var incomingEvent events.Event
 	var incomingLcdEvent *LcdEvent
 
-	EventLoop:
 	for {
-		incomingEvent = <-lcdEventInput
+		select {
+		case <-consumer.done:
+			{
 
-		switch incomingEvent.Type {
-		case "pushbullet":
-			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY,incomingEvent.Payload.(string), 8*time.Second, BEFORE, 1, true)
-		case "bmp":
-			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
-		case "systeminfo":
-			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
-		case "shutdown":
-			incomingLcdEvent = newLcdEvent(EVENT_SHUTDOWN, "Shutting down...", 5 * time.Second, BEFORE, 1, true)
-			display.displayEvent(incomingLcdEvent)
-			break EventLoop
+				incomingLcdEvent = newLcdEvent(EVENT_SHUTDOWN, "Shutting down...", 5 * time.Second, BEFORE, 1, true)
+				consumer.displayEvent(incomingLcdEvent)
+				log.Println("monitorlcdEventInputChannel Terminated")
+				return
+			}
+		case incomingEvent = <-consumer.inputChan:
 
-		default:
-			incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
+			switch incomingEvent.Type {
+			case "pushbullet":
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, BEFORE, 1, true)
+			case "bmp":
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, NO_FLASH, 1, false)
+			case "systeminfo":
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, NO_FLASH, 1, false)
+			default:
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, NO_FLASH, 1, false)
+			}
+			consumer.displayEvent(incomingLcdEvent)
+
 		}
-		display.displayEvent(incomingLcdEvent)
-
 	}
-	log.Println("LCD monitor goroutine exiting...")
-	lcdEventInput <- incomingEvent
-
 }
