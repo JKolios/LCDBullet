@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"reflect"
-
 	"github.com/JKolios/goLcdEvents/conf"
 	"github.com/JKolios/goLcdEvents/consumers/httplog"
 	"github.com/JKolios/goLcdEvents/consumers/lcd"
@@ -24,17 +22,17 @@ import (
 var highPriorityeventList = list.New()
 var lowPriorityeventList = list.New()
 
-var consumerMap = map[string]reflect.Type{
-	"lcd":      reflect.TypeOf((*lcd.LCDConsumer)(nil)),
-	"httplog":  reflect.TypeOf((*httplog.HttpConsumer)(nil)),
-	"wsclient": reflect.TypeOf((*wsclient.WebsocketConsumer)(nil))}
+var consumerMap = map[string]func() events.Consumer{
+	"lcd":      func() events.Consumer {return &lcd.LCDConsumer{}},
+	"httplog":  func() events.Consumer {return &httplog.HttpConsumer{}},
+	"wsclient": func() events.Consumer {return &wsclient.WebsocketConsumer{}}}
 
-var producerMap = map[string]reflect.Type{
-	"pushbullet":     reflect.TypeOf((*pushbullet.PushbulletProducer)(nil)),
-	"bmp":            reflect.TypeOf((*bmp.BMPProducer)(nil)),
-	"systeminfo":     reflect.TypeOf((*systeminfo.SystemInfoProducer)(nil)),
-	"wunderground":   reflect.TypeOf((*wunderground.WundergroundProducer)(nil)),
-	"bitcoinaverage": reflect.TypeOf((*bitcoinaverage.BitcoinAverageProducer)(nil))}
+var producerMap = map[string]func() events.Producer{
+	"pushbullet":     func() events.Producer {return &pushbullet.PushbulletProducer{}},
+	"bmp":            func() events.Producer {return &bmp.BMPProducer{}},
+	"systeminfo":     func() events.Producer {return &systeminfo.SystemInfoProducer{}},
+	"wunderground":   func() events.Producer {return &wunderground.WundergroundProducer{}},
+	"bitcoinaverage": func() events.Producer {return &bitcoinaverage.BitcoinAverageProducer{}}}
 
 func producerHub(done chan struct{}, producerChan chan events.Event) {
 
@@ -102,7 +100,7 @@ func main() {
 	done := make(chan struct{})
 
 	for _, consumerName := range config.Consumers {
-		consumer := reflect.New(consumerMap[consumerName]).Interface().(events.Consumer)
+		consumer := consumerMap[consumerName]()
 		consumer.Initialize(config)
 		newChan := make(chan events.Event, 100)
 		consumer.Start(done, newChan)
@@ -113,7 +111,7 @@ func main() {
 	producerChan := make(chan events.Event)
 
 	for _, producerName := range config.Producers {
-		producer := reflect.New(producerMap[producerName]).Interface().(events.Producer)
+		producer := producerMap[producerName]()
 		producer.Initialize(config)
 		producer.Start(done, producerChan)
 	}
