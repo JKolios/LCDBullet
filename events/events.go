@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	PRIORITY_IMMEDIATE = 2
-	PRIORITY_HIGH = 1
-	PRIORITY_LOW = 0
+	PRIORITY_LOW = iota
+	PRIORITY_HIGH
+	PRIORITY_IMMEDIATE
 )
 
 type Producer interface {
@@ -27,5 +27,5 @@ type Event struct {
 	Type      string
 	From      Producer
 	CreatedOn time.Time
-	Priority int
+	Priority  int
 }

@@ -19,7 +19,7 @@ type PushbulletProducer struct {
 	connection *websocket.Conn
 	token      string
 	output     chan<- events.Event
-	done <-chan struct{}
+	done       <-chan struct{}
 }
 
 type wsMessage struct {
@@ -51,12 +51,11 @@ func (producer *PushbulletProducer) Start(done <-chan struct{}, EventOutput chan
 	go pushbulletMonitor(producer)
 }
 
-
 func pushbulletMonitor(producer *PushbulletProducer) {
 	//set up the message pump
 	wsMessageChannel := make(chan wsMessage)
 	lastcheckTimestamp := float64(time.Now().Unix())
-	go wsMessagePump(producer.done, producer.connection, wsMessageChannel, )
+	go wsMessagePump(producer.done, producer.connection, wsMessageChannel)
 	for {
 
 		select {
@@ -100,7 +99,7 @@ func wsMessagePump(done <-chan struct{}, conn *websocket.Conn, messageChannel ch
 		select {
 		case <-done:
 			{
-				log.Println("Message Pump Terminated")
+				log.Println("Message Pembdump Terminated")
 				conn.Close()
 				return
 			}

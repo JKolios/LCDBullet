@@ -1,22 +1,22 @@
 package wsclient
 
 import (
-	"log"
 	"fmt"
-	"net/http"
 	"html/template"
+	"log"
+	"net/http"
 
 	"github.com/JKolios/goLcdEvents/conf"
 	"github.com/JKolios/goLcdEvents/events"
-	"github.com/gorilla/websocket")
-
+	"github.com/gorilla/websocket"
+)
 
 type WebsocketConsumer struct {
-	WSClientHost string
+	WSClientHost          string
 	WSClientEndpoint      string
 	WSClientListenAddress string
-	inputChan <-chan events.Event
-	done <-chan struct{}
+	inputChan             <-chan events.Event
+	done                  <-chan struct{}
 }
 
 var clientTemplate *template.Template
@@ -81,7 +81,6 @@ window.addEventListener("load", function(evt) {
 </body>
 </html>`
 
-
 func (consumer *WebsocketConsumer) Initialize(config conf.Configuration) {
 	// Config Parsing
 	consumer.WSClientHost = config.WSClientHost
@@ -107,7 +106,6 @@ func (consumer *WebsocketConsumer) Start(done <-chan struct{}, EventInput <-chan
 	// Input Monitor Goroutine Startup
 	go monitorWebsocketProducerInput(consumer)
 }
-
 
 func monitorWebsocketProducerInput(consumer *WebsocketConsumer) {
 	var incomingEvent events.Event
@@ -146,7 +144,6 @@ func WSEndpointHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-
 func ClientHandler(w http.ResponseWriter, req *http.Request) {
-	clientTemplate.Execute(w, "ws://" + host + "/dataSource")
+	clientTemplate.Execute(w, "ws://"+host+"/dataSource")
 }

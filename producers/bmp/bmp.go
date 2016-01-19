@@ -16,7 +16,7 @@ import (
 type BMPProducer struct {
 	sensor     *bmp085.BMP085
 	outputChan chan<- events.Event
-	done <-chan struct{}
+	done       <-chan struct{}
 }
 
 func (producer *BMPProducer) Initialize(config conf.Configuration) {
@@ -57,7 +57,7 @@ func pollBMP085(producer *BMPProducer, every time.Duration) {
 			pressStr := strconv.Itoa(pressure)
 			altStr := strconv.FormatFloat(altitude, 'f', 2, 64)
 
-			finalMessage := fmt.Sprintf("Temp:%v Pressure:%v Altitude:%v", tempStr, pressStr, altStr)
+			finalMessage := fmt.Sprintf("BMP Reports: Temperature:%v Pressure:%v Altitude:%v", tempStr, pressStr, altStr)
 			finalEvent := events.Event{finalMessage, "bmp", producer, time.Now(), events.PRIORITY_LOW}
 
 			producer.outputChan <- finalEvent

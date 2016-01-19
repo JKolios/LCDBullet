@@ -20,7 +20,7 @@ type WundergroundProducer struct {
 	token    string
 	location string
 	output   chan<- events.Event
-	done <-chan struct{}
+	done     <-chan struct{}
 }
 
 type apiResponse struct {

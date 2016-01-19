@@ -9,9 +9,9 @@ import (
 )
 
 type LCDConsumer struct {
-	Driver        *hd44780.HD44780
+	Driver    *hd44780.HD44780
 	inputChan <-chan events.Event
-	done <-chan struct{}
+	done      <-chan struct{}
 }
 
 func (consumer *LCDConsumer) Initialize(config conf.Configuration) {

@@ -18,17 +18,15 @@ const (
 
 type BitcoinAverageProducer struct {
 	currencySymbol string
-	output   chan<- events.Event
-	done <-chan struct{}
+	output         chan<- events.Event
+	done           <-chan struct{}
 }
 
 type apiResponse struct {
-
-	Ask float32 `json:"ask"`
-	Bid float32 `json:"bid"`
-	Last float32 `json:"last"`
+	Ask    float32 `json:"ask"`
+	Bid    float32 `json:"bid"`
+	Last   float32 `json:"last"`
 	Avg24h float32 `json:"24h_avg"`
-
 }
 
 var httpClient *http.Client = &http.Client{}

@@ -12,7 +12,7 @@ import (
 
 type SystemInfoProducer struct {
 	outputChan chan<- events.Event
-	done <-chan struct{}
+	done       <-chan struct{}
 }
 
 func (producer *SystemInfoProducer) Initialize(config conf.Configuration) {
@@ -35,6 +35,7 @@ func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 				log.Println("pollSystemInfo Terminated")
 				return
 			}
+		default:
 			log.Println("Starting systeminfo polling")
 			uptime, err := linuxproc.ReadUptime("/proc/uptime")
 			if err != nil {
@@ -46,7 +47,7 @@ func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 				log.Fatal("Failed while getting uptime")
 			}
 
-			uptimeStr := fmt.Sprintf("Up:%v ", time.Duration(time.Duration(int64(uptime.Total)) * time.Second).String())
+			uptimeStr := fmt.Sprintf("Up:%v ", time.Duration(time.Duration(int64(uptime.Total))*time.Second).String())
 			loadStr := fmt.Sprintf("Load:%v %v %v", load.Last1Min, load.Last5Min, load.Last15Min)
 			uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", producer, time.Now(), events.PRIORITY_LOW}
 

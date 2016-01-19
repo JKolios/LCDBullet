@@ -15,8 +15,8 @@ var httpContent = make(chan string)
 type HttpConsumer struct {
 	listenAddress string
 	endpoint      string
-	inputChan <-chan events.Event
-	done <-chan struct{}
+	inputChan     <-chan events.Event
+	done          <-chan struct{}
 }
 
 func (consumer *HttpConsumer) Initialize(config conf.Configuration) {

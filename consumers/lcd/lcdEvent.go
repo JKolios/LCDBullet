@@ -38,7 +38,7 @@ func monitorlcdEventInputChannel(consumer *LCDConsumer) {
 		case <-consumer.done:
 			{
 
-				incomingLcdEvent = newLcdEvent(EVENT_SHUTDOWN, "Shutting down...", 5 * time.Second, BEFORE, 1, true)
+				incomingLcdEvent = newLcdEvent(EVENT_SHUTDOWN, "Shutting down...", 5*time.Second, BEFORE, 1, true)
 				consumer.displayEvent(incomingLcdEvent)
 				log.Println("monitorlcdEventInputChannel Terminated")
 				return
@@ -47,13 +47,13 @@ func monitorlcdEventInputChannel(consumer *LCDConsumer) {
 
 			switch incomingEvent.Type {
 			case "pushbullet":
-				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, BEFORE, 1, true)
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, BEFORE, 1, true)
 			case "bmp":
-				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, NO_FLASH, 1, false)
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 			case "systeminfo":
-				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, NO_FLASH, 1, false)
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 			default:
-				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8 * time.Second, NO_FLASH, 1, false)
+				incomingLcdEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
 			}
 			consumer.displayEvent(incomingLcdEvent)
 
