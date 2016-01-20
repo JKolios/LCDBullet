@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	apiURL = "https://api.bitcoinaverage.com/ticker/global/"
+	API_URL     = "https://api.bitcoinaverage.com/ticker/global/"
+	TICK_PERIOD = 30 * time.Second
 )
 
 type BitcoinAverageProducer struct {
 	currencySymbol string
-	output         chan<- events.Event
+	outputChan     chan<- events.Event
 	done           <-chan struct{}
 }
 
@@ -36,11 +37,12 @@ func (producer *BitcoinAverageProducer) Initialize(config conf.Configuration) {
 
 }
 
-func (producer *BitcoinAverageProducer) Start(done <-chan struct{}, EventOutput chan<- events.Event) {
+func (producer *BitcoinAverageProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
 
-	producer.output = EventOutput
+	producer.outputChan = outputChan
 	producer.done = done
-	go pollBitcoinAverage(producer, 30*time.Second)
+	go pollBitcoinAverage(producer, TICK_PERIOD)
+	log.Println("Bitcoin Average Producer: started")
 }
 
 func pollBitcoinAverage(producer *BitcoinAverageProducer, every time.Duration) {
@@ -57,10 +59,10 @@ func pollBitcoinAverage(producer *BitcoinAverageProducer, every time.Duration) {
 			averages := getCurrentBTCAverages(producer.currencySymbol)
 
 			finalMessage := fmt.Sprintf("Bitcoin Global Average: Ask: %v Bid:%v Last:%v 24H Average: %v", averages.Ask, averages.Bid, averages.Last, averages.Avg24h)
-			finalEvent := events.Event{finalMessage, "bitcoinaverage", producer, time.Now(), events.PRIORITY_LOW}
+			finalEvent := events.Event{finalMessage, "bitcoinaverage", time.Now(), events.PRIORITY_LOW}
 
-			producer.output <- finalEvent
-			log.Println("Wunderground polling done")
+			producer.outputChan <- finalEvent
+			log.Println("Bitcoinaverage polling done")
 			<-tick
 		}
 	}
@@ -68,7 +70,7 @@ func pollBitcoinAverage(producer *BitcoinAverageProducer, every time.Duration) {
 
 func getCurrentBTCAverages(currencySymbol string) apiResponse {
 
-	requestUrl := apiURL + currencySymbol
+	requestUrl := API_URL + currencySymbol
 	var responseStruct apiResponse
 
 	req, err := http.NewRequest("GET", requestUrl, nil)

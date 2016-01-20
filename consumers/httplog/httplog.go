@@ -15,7 +15,7 @@ var httpContent = make(chan string)
 type HttpConsumer struct {
 	listenAddress string
 	endpoint      string
-	inputChan     <-chan events.Event
+	inputChan     chan events.Event
 	done          <-chan struct{}
 }
 
@@ -25,9 +25,9 @@ func (consumer *HttpConsumer) Initialize(config conf.Configuration) {
 	consumer.endpoint = config.HTTPLogEndpoint
 }
 
-func (consumer *HttpConsumer) Start(done <-chan struct{}, EventInput <-chan events.Event) {
+func (consumer *HttpConsumer) Start(done <-chan struct{}) chan events.Event {
 	consumer.done = done
-	consumer.inputChan = EventInput
+	consumer.inputChan = make(chan events.Event)
 
 	// Input Monitor Goroutine Startup
 	go monitorHttpConsumerInput(consumer)
@@ -35,7 +35,9 @@ func (consumer *HttpConsumer) Start(done <-chan struct{}, EventInput <-chan even
 	//HTTP Handler Startup
 	http.HandleFunc(consumer.endpoint, httpPollHandler)
 	go http.ListenAndServe(consumer.listenAddress, nil)
-	log.Println("HTTP log: started, listening at " + consumer.listenAddress + consumer.endpoint)
+	log.Println("HTTP consumer: started, listening at " + consumer.listenAddress + consumer.endpoint)
+
+	return consumer.inputChan
 }
 
 func monitorHttpConsumerInput(consumer *HttpConsumer) {

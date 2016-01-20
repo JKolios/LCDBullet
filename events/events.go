@@ -2,8 +2,6 @@ package events
 
 import (
 	"time"
-
-	"github.com/JKolios/goLcdEvents/conf"
 )
 
 const (
@@ -12,20 +10,11 @@ const (
 	PRIORITY_IMMEDIATE
 )
 
-type Producer interface {
-	Initialize(config conf.Configuration)
-	Start(<-chan struct{}, chan<- Event)
-}
-
-type Consumer interface {
-	Initialize(config conf.Configuration)
-	Start(<-chan struct{}, <-chan Event)
-}
+const MAX_EVENT_LIFETIME = time.Minute * 5
 
 type Event struct {
 	Payload   interface{}
 	Type      string
-	From      Producer
 	CreatedOn time.Time
 	Priority  int
 }

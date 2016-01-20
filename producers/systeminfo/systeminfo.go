@@ -10,6 +10,10 @@ import (
 	linuxproc "github.com/c9s/goprocinfo/linux"
 )
 
+const (
+	TICK_PERIOD = 10 * time.Second
+)
+
 type SystemInfoProducer struct {
 	outputChan chan<- events.Event
 	done       <-chan struct{}
@@ -20,10 +24,11 @@ func (producer *SystemInfoProducer) Initialize(config conf.Configuration) {
 	return
 }
 
-func (producer *SystemInfoProducer) Start(done <-chan struct{}, EventOutput chan<- events.Event) {
-	producer.outputChan = EventOutput
+func (producer *SystemInfoProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
+	producer.outputChan = outputChan
 	producer.done = done
-	go pollSystemInfo(producer, time.Second*10)
+	go pollSystemInfo(producer, TICK_PERIOD)
+	log.Println("Systeminfo Producer: started")
 }
 
 func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
@@ -49,7 +54,7 @@ func pollSystemInfo(producer *SystemInfoProducer, every time.Duration) {
 
 			uptimeStr := fmt.Sprintf("Up:%v ", time.Duration(time.Duration(int64(uptime.Total))*time.Second).String())
 			loadStr := fmt.Sprintf("Load:%v %v %v", load.Last1Min, load.Last5Min, load.Last15Min)
-			uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", producer, time.Now(), events.PRIORITY_LOW}
+			uptimeEvent := events.Event{uptimeStr + loadStr, "systeminfo", time.Now(), events.PRIORITY_LOW}
 
 			producer.outputChan <- uptimeEvent
 			log.Println("Systeminfo polling done")

@@ -6,11 +6,12 @@ import (
 	"github.com/JKolios/goLcdEvents/utils"
 	"github.com/kidoman/embd/controller/hd44780"
 	_ "github.com/kidoman/embd/host/rpi"
+	"log"
 )
 
 type LCDConsumer struct {
 	Driver    *hd44780.HD44780
-	inputChan <-chan events.Event
+	inputChan chan events.Event
 	done      <-chan struct{}
 }
 
@@ -29,10 +30,12 @@ func (consumer *LCDConsumer) Initialize(config conf.Configuration) {
 
 }
 
-func (consumer *LCDConsumer) Start(done <-chan struct{}, EventInput <-chan events.Event) {
+func (consumer *LCDConsumer) Start(done <-chan struct{}) chan events.Event {
 
-	consumer.inputChan = EventInput
+	consumer.inputChan = make(chan events.Event)
 	consumer.done = done
 	// Input Monitor Goroutine Startup
 	go monitorlcdEventInputChannel(consumer)
+	log.Println("LCD Consumer: started")
+	return consumer.inputChan
 }

@@ -2,37 +2,20 @@ package main
 
 import (
 	"container/list"
+	"github.com/JKolios/goLcdEvents/conf"
+	"github.com/JKolios/goLcdEvents/consumers"
+	"github.com/JKolios/goLcdEvents/events"
+	"github.com/JKolios/goLcdEvents/inspector"
+	"github.com/JKolios/goLcdEvents/producers"
+	_ "github.com/kidoman/embd/host/rpi"
 	"log"
 	"os"
 	"os/signal"
-	"github.com/JKolios/goLcdEvents/conf"
-	"github.com/JKolios/goLcdEvents/consumers/httplog"
-	"github.com/JKolios/goLcdEvents/consumers/lcd"
-	"github.com/JKolios/goLcdEvents/consumers/wsclient"
-	"github.com/JKolios/goLcdEvents/events"
-	"github.com/JKolios/goLcdEvents/producers/bitcoinaverage"
-	"github.com/JKolios/goLcdEvents/producers/bmp"
-	"github.com/JKolios/goLcdEvents/producers/pushbullet"
-	"github.com/JKolios/goLcdEvents/producers/systeminfo"
-	"github.com/JKolios/goLcdEvents/producers/wunderground"
-	_ "github.com/kidoman/embd/host/rpi"
 	"time"
 )
 
 var highPriorityeventList = list.New()
 var lowPriorityeventList = list.New()
-
-var consumerMap = map[string]func() events.Consumer{
-	"lcd":      func() events.Consumer {return &lcd.LCDConsumer{}},
-	"httplog":  func() events.Consumer {return &httplog.HttpConsumer{}},
-	"wsclient": func() events.Consumer {return &wsclient.WebsocketConsumer{}}}
-
-var producerMap = map[string]func() events.Producer{
-	"pushbullet":     func() events.Producer {return &pushbullet.PushbulletProducer{}},
-	"bmp":            func() events.Producer {return &bmp.BMPProducer{}},
-	"systeminfo":     func() events.Producer {return &systeminfo.SystemInfoProducer{}},
-	"wunderground":   func() events.Producer {return &wunderground.WundergroundProducer{}},
-	"bitcoinaverage": func() events.Producer {return &bitcoinaverage.BitcoinAverageProducer{}}}
 
 func producerHub(done chan struct{}, producerChan chan events.Event) {
 
@@ -57,7 +40,7 @@ func producerHub(done chan struct{}, producerChan chan events.Event) {
 	}
 }
 
-func consumerHub(done chan struct{}, consumerChans []chan events.Event) {
+func consumerHub(done chan struct{}, consumerChans []chan<- events.Event) {
 
 	var selectedEvent events.Event
 
@@ -95,29 +78,33 @@ func main() {
 	}
 
 	// Consumer Init
-	var consumerChannels []chan events.Event
+	var consumerChannels []chan<- events.Event
 
 	done := make(chan struct{})
 
 	for _, consumerName := range config.Consumers {
-		consumer := consumerMap[consumerName]()
+		consumer := consumers.NewConsumer(consumerName)
 		consumer.Initialize(config)
-		newChan := make(chan events.Event, 100)
-		consumer.Start(done, newChan)
-		consumerChannels = append(consumerChannels, newChan)
+		consumerChannels = append(consumerChannels, consumer.Start(done))
 	}
 
 	// Producer Init
 	producerChan := make(chan events.Event)
 
 	for _, producerName := range config.Producers {
-		producer := producerMap[producerName]()
+		producer := producers.NewProducer(producerName)
 		producer.Initialize(config)
 		producer.Start(done, producerChan)
 	}
 
 	go producerHub(done, producerChan)
 	go consumerHub(done, consumerChannels)
+
+	go inspector.ListReport(lowPriorityeventList, "Low Priority", time.Minute*10)
+	go inspector.ListReport(highPriorityeventList, "High Priority", time.Minute*10)
+
+	go inspector.ListCleaner(lowPriorityeventList, "Low Priority", time.Minute*10)
+	go inspector.ListCleaner(highPriorityeventList, "High Priority", time.Minute*10)
 
 	controlChan := make(chan os.Signal)
 	signal.Notify(controlChan, os.Interrupt, os.Kill)

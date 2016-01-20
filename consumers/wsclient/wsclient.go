@@ -15,7 +15,7 @@ type WebsocketConsumer struct {
 	WSClientHost          string
 	WSClientEndpoint      string
 	WSClientListenAddress string
-	inputChan             <-chan events.Event
+	inputChan             chan events.Event
 	done                  <-chan struct{}
 }
 
@@ -92,22 +92,25 @@ func (consumer *WebsocketConsumer) Initialize(config conf.Configuration) {
 	log.Println("Websocket Consumer: initialized, template loaded")
 }
 
-func (consumer *WebsocketConsumer) Start(done <-chan struct{}, EventInput <-chan events.Event) {
+func (consumer *WebsocketConsumer) Start(done <-chan struct{}) chan events.Event {
 
 	consumer.done = done
+	consumer.inputChan = make(chan events.Event)
 
 	//Websocket Endpoint Startup
 	http.HandleFunc("/dataSource", WSEndpointHandler)
 	http.HandleFunc(consumer.WSClientEndpoint, ClientHandler)
 
 	go http.ListenAndServe(consumer.WSClientListenAddress, nil)
-	log.Println("Websocket Consumer: started, listening at " + consumer.WSClientHost + consumer.WSClientEndpoint)
+	log.Println("Websocket Endpoint: started, listening at " + consumer.WSClientHost + consumer.WSClientEndpoint)
 
 	// Input Monitor Goroutine Startup
-	go monitorWebsocketProducerInput(consumer)
+	go monitorWebsocketConsumerInput(consumer)
+	log.Println("Websocket Consumer: started")
+	return consumer.inputChan
 }
 
-func monitorWebsocketProducerInput(consumer *WebsocketConsumer) {
+func monitorWebsocketConsumerInput(consumer *WebsocketConsumer) {
 	var incomingEvent events.Event
 
 	for {

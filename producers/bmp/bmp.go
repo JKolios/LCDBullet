@@ -13,6 +13,10 @@ import (
 	"github.com/kidoman/embd/sensor/bmp085"
 )
 
+const (
+	TICK_PERIOD = 10 * time.Second
+)
+
 type BMPProducer struct {
 	sensor     *bmp085.BMP085
 	outputChan chan<- events.Event
@@ -26,11 +30,11 @@ func (producer *BMPProducer) Initialize(config conf.Configuration) {
 
 }
 
-func (producer *BMPProducer) Start(done <-chan struct{}, EventOutput chan<- events.Event) {
-	producer.outputChan = EventOutput
+func (producer *BMPProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
+	producer.outputChan = outputChan
 	producer.done = done
-	log.Println("Initializing BMP085 polling")
-	go pollBMP085(producer, 10*time.Second)
+	go pollBMP085(producer, TICK_PERIOD)
+	log.Println("BMP085 Producer: started")
 }
 
 func pollBMP085(producer *BMPProducer, every time.Duration) {
@@ -58,7 +62,7 @@ func pollBMP085(producer *BMPProducer, every time.Duration) {
 			altStr := strconv.FormatFloat(altitude, 'f', 2, 64)
 
 			finalMessage := fmt.Sprintf("BMP Reports: Temperature:%v Pressure:%v Altitude:%v", tempStr, pressStr, altStr)
-			finalEvent := events.Event{finalMessage, "bmp", producer, time.Now(), events.PRIORITY_LOW}
+			finalEvent := events.Event{finalMessage, "bmp", time.Now(), events.PRIORITY_LOW}
 
 			producer.outputChan <- finalEvent
 			log.Println("BMP085 polling done")

@@ -18,7 +18,7 @@ const (
 type PushbulletProducer struct {
 	connection *websocket.Conn
 	token      string
-	output     chan<- events.Event
+	outputChan chan<- events.Event
 	done       <-chan struct{}
 }
 
@@ -32,7 +32,7 @@ func (producer *PushbulletProducer) Initialize(config conf.Configuration) {
 
 }
 
-func (producer *PushbulletProducer) Start(done <-chan struct{}, EventOutput chan<- events.Event) {
+func (producer *PushbulletProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
 
 	dialer := websocket.Dialer{}
 	wsHeaders := http.Header{
@@ -46,9 +46,10 @@ func (producer *PushbulletProducer) Start(done <-chan struct{}, EventOutput chan
 	}
 	log.Println("PushbulletProducer: Websocket connection appears to be up, monitoring")
 	producer.connection = wsConnection
-	producer.output = EventOutput
+	producer.outputChan = outputChan
 	producer.done = done
 	go pushbulletMonitor(producer)
+	log.Println("Pushbullet Producer: started")
 }
 
 func pushbulletMonitor(producer *PushbulletProducer) {
@@ -74,8 +75,8 @@ func pushbulletMonitor(producer *PushbulletProducer) {
 
 					for _, push := range ListPushesResponse.Pushes {
 
-						pushEvent := events.Event{push.Body, "pushbullet", producer, time.Now(), events.PRIORITY_HIGH}
-						producer.output <- pushEvent
+						pushEvent := events.Event{push.Body, "pushbullet", time.Now(), events.PRIORITY_HIGH}
+						producer.outputChan <- pushEvent
 						lastcheckTimestamp = push.Modified
 
 					}
