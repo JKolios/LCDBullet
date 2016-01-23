@@ -29,3 +29,4 @@ lcdevents
 goLcdEvents
 .idea/
 *.swp
+*.iml
