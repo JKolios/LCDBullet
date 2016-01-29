@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/JKolios/goLcdEvents/utils"
+	"github.com/kidoman/embd/controller/hd44780"
 )
 
-func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Duration) {
+func displaySingleFrame(display *hd44780.HD44780, bytes []byte, duration time.Duration) {
 
 	//Display Line 0
 	rightBound := 16
@@ -17,13 +18,13 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 	}
 	// log.Println("Line 0: " + string(bytes[0:rightBound]))
 	for _, char := range bytes[0:rightBound] {
-		err := display.Driver.WriteChar(char)
+		err := display.WriteChar(char)
 		utils.LogErrorandExit("Cannot write char to LCD:", err)
 	}
 
 	//Display Line 1
 	if len(bytes) > 16 {
-		display.Driver.SetCursor(0, 1)
+		display.SetCursor(0, 1)
 		rightBound = 32
 		if len(bytes) < 32 {
 			rightBound = len(bytes)
@@ -31,7 +32,7 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 		// log.Println("Line 1: " + string(bytes[16:rightBound]))
 
 		for _, char := range bytes[16:rightBound] {
-			err := display.Driver.WriteChar(char)
+			err := display.WriteChar(char)
 			utils.LogErrorandExit("Cannot write char to LCD:", err)
 		}
 	}
@@ -41,13 +42,13 @@ func (display *LCDConsumer) displaySingleFrame(bytes []byte, duration time.Durat
 
 //DisplayMessage shows the given message on the display. The message is split in pages if needed (no scrolling is used)
 //In general, only strings that can be mapped onto ASCII can be displayed correctly.
-func (display *LCDConsumer) displayEvent(event *LcdEvent) {
+func displayEvent(display *hd44780.HD44780, event *LcdEvent) {
 	log.Println("LCD: Displaying message: " + event.message)
-	err := display.Driver.Clear()
+	err := display.Clear()
 	utils.LogErrorandExit("Cannot clear LCD:", err)
 
 	if event.flash == BEFORE || event.flash == BEFORE_AND_AFTER {
-		display.flashDisplay(event.flashRepetitions, 1*time.Second)
+		flashDisplay(display, event.flashRepetitions, 1*time.Second)
 	}
 
 	bytes := []byte(event.message)
@@ -65,31 +66,31 @@ func (display *LCDConsumer) displayEvent(event *LcdEvent) {
 			rightBound = len(bytes)
 		}
 		// log.Println("Frame Content: " + string(bytes[i*32:rightBound]))
-		display.displaySingleFrame(bytes[i*32:rightBound], time.Duration(frametime))
+		displaySingleFrame(display, bytes[i*32:rightBound], time.Duration(frametime))
 
 		if i != (frames-1) || event.clearAfter {
-			display.Driver.Clear()
+			display.Clear()
 		}
 
 	}
 
 	if event.flash == AFTER || event.flash == BEFORE_AND_AFTER {
-		display.flashDisplay(event.flashRepetitions, 1*time.Second)
+		flashDisplay(display, event.flashRepetitions, 1*time.Second)
 	}
 
 	if event.eventType == EVENT_SHUTDOWN {
 		log.Println("LCD: Driver shutting down...")
-		display.Driver.Close()
+		display.Close()
 	}
 }
 
 //FlashDisplay will trigger the LCD's display on and off
-func (display *LCDConsumer) flashDisplay(repetitions int, duration time.Duration) {
+func flashDisplay(display *hd44780.HD44780, repetitions int, duration time.Duration) {
 	for i := 0; i < repetitions; i++ {
-		err := display.Driver.BacklightOn()
+		err := display.BacklightOn()
 		utils.LogErrorandExit("Failed while flashing display", err)
 		time.Sleep(duration / 2)
-		err = display.Driver.BacklightOff()
+		err = display.BacklightOff()
 		utils.LogErrorandExit("Failed while flashing display", err)
 		time.Sleep(duration / 2)
 	}

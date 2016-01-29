@@ -1,73 +1,46 @@
+// +build linux
+
 package bmp
 
 import (
 	"fmt"
-	"log"
 	"strconv"
-	"time"
 
-	"github.com/JKolios/goLcdEvents/conf"
-	"github.com/JKolios/goLcdEvents/events"
+	"github.com/JKolios/EventsToGo/events"
+	"github.com/JKolios/EventsToGo/producers"
 	"github.com/JKolios/goLcdEvents/utils"
 	"github.com/kidoman/embd"
+	_ "github.com/kidoman/embd/host/rpi"
 	"github.com/kidoman/embd/sensor/bmp085"
+	"time"
 )
 
-const (
-	TICK_PERIOD = 10 * time.Second
-)
-
-type BMPProducer struct {
-	sensor     *bmp085.BMP085
-	outputChan chan<- events.Event
-	done       <-chan struct{}
+func ProducerSetupFuction(producer *producers.GenericProducer, config map[string]interface{}) {
+	producer.RuntimeObjects["sensor"] = bmp085.New(embd.NewI2CBus(config["Bmpi2c"].(byte)))
 }
 
-func (producer *BMPProducer) Initialize(config conf.Configuration) {
-
-	bus := embd.NewI2CBus(config.Bmpi2c)
-	producer.sensor = bmp085.New(bus)
-
+func ProducerWaitFunction(producer *producers.GenericProducer) {
+	time.Sleep(30 * time.Second)
 }
 
-func (producer *BMPProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
-	producer.outputChan = outputChan
-	producer.done = done
-	go pollBMP085(producer, TICK_PERIOD)
-	log.Println("BMP085 Producer: started")
-}
+func ProducerRunFuction(producer *producers.GenericProducer) events.Event {
 
-func pollBMP085(producer *BMPProducer, every time.Duration) {
-	tick := time.Tick(every)
-	for {
-		select {
-		case <-producer.done:
-			{
-				log.Println("pollBMP085 Terminated")
-				return
-			}
-		default:
-			log.Println("Starting BMP085 polling")
-			temperature, err := producer.sensor.Temperature()
-			utils.LogErrorandExit("Cannot get temperature", err)
+	sensor := producer.RuntimeObjects["sensor"].(bmp085.BMP085)
 
-			pressure, err := producer.sensor.Pressure()
-			utils.LogErrorandExit("Cannot get pressure", err)
+	temperature, err := sensor.Temperature()
+	utils.LogErrorandExit("Cannot get temperature", err)
 
-			altitude, err := producer.sensor.Altitude()
-			utils.LogErrorandExit("Cannot get altitude", err)
+	pressure, err := sensor.Pressure()
+	utils.LogErrorandExit("Cannot get pressure", err)
 
-			tempStr := strconv.FormatFloat(temperature, 'f', 2, 64)
-			pressStr := strconv.Itoa(pressure)
-			altStr := strconv.FormatFloat(altitude, 'f', 2, 64)
+	altitude, err := sensor.Altitude()
+	utils.LogErrorandExit("Cannot get altitude", err)
 
-			finalMessage := fmt.Sprintf("BMP Reports: Temperature:%v Pressure:%v Altitude:%v", tempStr, pressStr, altStr)
-			finalEvent := events.Event{finalMessage, "bmp", time.Now(), events.PRIORITY_LOW}
+	tempStr := strconv.FormatFloat(temperature, 'f', 2, 64)
+	pressStr := strconv.Itoa(pressure)
+	altStr := strconv.FormatFloat(altitude, 'f', 2, 64)
 
-			producer.outputChan <- finalEvent
-			log.Println("BMP085 polling done")
-			<-tick
-		}
+	finalMessage := fmt.Sprintf("BMP Reports: Temperature:%v Pressure:%v Altitude:%v", tempStr, pressStr, altStr)
+	return events.Event{finalMessage, producer.Name, time.Now(), events.PRIORITY_LOW}
 
-	}
 }

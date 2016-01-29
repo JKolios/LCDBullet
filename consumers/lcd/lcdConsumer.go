@@ -1,41 +1,54 @@
+// +build linux
+
 package lcd
 
 import (
-	"github.com/JKolios/goLcdEvents/conf"
-	"github.com/JKolios/goLcdEvents/events"
-	"github.com/JKolios/goLcdEvents/utils"
+	"github.com/JKolios/EventsToGo/consumers"
+	"github.com/JKolios/EventsToGo/events"
 	"github.com/kidoman/embd/controller/hd44780"
 	_ "github.com/kidoman/embd/host/rpi"
 	"log"
+
+	"time"
 )
 
-type LCDConsumer struct {
-	Driver    *hd44780.HD44780
-	inputChan chan events.Event
-	done      <-chan struct{}
+func RunFunction(consumer *consumers.GenericConsumer, incomingEvent events.Event) {
+	var incomingLCDEvent *LcdEvent
+
+	switch incomingEvent.Type {
+	case "pushbullet":
+		incomingLCDEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, BEFORE, 1, true)
+	case "bmp":
+		incomingLCDEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
+	case "systeminfo":
+		incomingLCDEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
+	default:
+		incomingLCDEvent = newLcdEvent(EVENT_DISPLAY, incomingEvent.Payload.(string), 8*time.Second, NO_FLASH, 1, false)
+	}
+	displayEvent(consumer.RuntimeObjects["driver"].(*hd44780.HD44780), incomingLCDEvent)
 }
 
-func (consumer *LCDConsumer) Initialize(config conf.Configuration) {
-	// Config Parsing
-	pinout := config.Pinout
-	blPolarity := config.BlPolarity
-
-	// Driver Init
-	driver, err := hd44780.NewGPIO(pinout[0], pinout[1], pinout[2], pinout[3], pinout[4], pinout[5], pinout[6], hd44780.BacklightPolarity(blPolarity), hd44780.RowAddress16Col, hd44780.TwoLine, hd44780.DisplayOn, hd44780.Dots5x10)
-	utils.LogErrorandExit("Cannot init LCD:", err)
-
-	consumer.Driver = driver
-	err = consumer.Driver.Clear()
-	utils.LogErrorandExit("Cannot clear LCD:", err)
-
+func StopFunction(consumer *consumers.GenericConsumer) {
+	err := consumer.RuntimeObjects["driver"].(*hd44780.HD44780).Close()
+	if err != nil {
+		log.Fatal("Cannot close LCD:", err.Error())
+	}
 }
 
-func (consumer *LCDConsumer) Start(done <-chan struct{}) chan events.Event {
+func SetupFunction(consumer *consumers.GenericConsumer, config map[string]interface{}) {
 
-	consumer.inputChan = make(chan events.Event)
-	consumer.done = done
-	// Input Monitor Goroutine Startup
-	go monitorlcdEventInputChannel(consumer)
-	log.Println("LCD Consumer: started")
-	return consumer.inputChan
+	pinout := config["pinout"].([]interface{})
+
+	driver, err := hd44780.NewGPIO(pinout[0].(int), pinout[1].(int), pinout[2].(int), pinout[3].(int), pinout[4].(int), pinout[5].(int), pinout[6].(int), hd44780.BacklightPolarity(config["BlPolarity"].(bool)), hd44780.RowAddress16Col, hd44780.TwoLine, hd44780.DisplayOn, hd44780.Dots5x10)
+	consumer.RuntimeObjects["driver"] = driver
+
+	if err != nil {
+		log.Fatal("Cannot init LCD:", err.Error())
+	}
+
+	err = driver.Clear()
+	if err != nil {
+		log.Fatal("Cannot clear LCD:", err.Error())
+	}
+
 }

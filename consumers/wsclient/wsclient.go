@@ -6,23 +6,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/JKolios/goLcdEvents/conf"
-	"github.com/JKolios/goLcdEvents/events"
+	"github.com/JKolios/EventsToGo/consumers"
+	"github.com/JKolios/EventsToGo/events"
 	"github.com/gorilla/websocket"
 )
-
-type WebsocketConsumer struct {
-	WSClientHost          string
-	WSClientEndpoint      string
-	WSClientListenAddress string
-	inputChan             chan events.Event
-	done                  <-chan struct{}
-}
-
-var clientTemplate *template.Template
-var host string
-var upgrader = websocket.Upgrader{}
-var wsContent = make(chan string)
 
 const clientTemplateStr string = `
 <!DOCTYPE html>
@@ -81,72 +68,49 @@ window.addEventListener("load", function(evt) {
 </body>
 </html>`
 
-func (consumer *WebsocketConsumer) Initialize(config conf.Configuration) {
-	// Config Parsing
-	consumer.WSClientHost = config.WSClientHost
-	host = config.WSClientHost
-	consumer.WSClientEndpoint = config.WSClientEndpoint
-	consumer.WSClientListenAddress = config.WSClientListenAddress
+func WSEndpointClosure(wsContent chan string) func(http.ResponseWriter, *http.Request) {
 
-	clientTemplate = template.Must(template.New("wsclient").Parse(clientTemplateStr))
-	log.Println("Websocket Consumer: initialized, template loaded")
+	return func(w http.ResponseWriter, req *http.Request) {
+		upgrader := &websocket.Upgrader{}
+		wsConn, err := upgrader.Upgrade(w, req, nil)
+		if err != nil {
+			log.Println("Websocket Consumer: upgrade error:", err)
+			return
+		}
+		defer wsConn.Close()
+
+		for {
+			err = wsConn.WriteMessage(websocket.TextMessage, []byte(<-wsContent))
+			if err != nil {
+				log.Println("Websocket Consumer: write error:", err)
+				break
+			}
+		}
+	}
 }
 
-func (consumer *WebsocketConsumer) Start(done <-chan struct{}) chan events.Event {
+func ClientHandlerClosure(template *template.Template, host string) func(http.ResponseWriter, *http.Request) {
 
-	consumer.done = done
-	consumer.inputChan = make(chan events.Event)
+	return func(w http.ResponseWriter, req *http.Request) {
+		template.Execute(w, "ws://"+host+"/dataSource")
+	}
+}
+
+func RunFunction(consumer *consumers.GenericConsumer, incomingEvent events.Event) {
+	consumer.RuntimeObjects["wsContentChan"].(chan string) <- fmt.Sprintf("%s:%s\n", incomingEvent.Type, incomingEvent.Payload.(string))
+}
+
+func SetupFunction(consumer *consumers.GenericConsumer, config map[string]interface{}) {
+
+	print(config)
+	consumer.RuntimeObjects["template"] = template.Must(template.New("wsclient").Parse(clientTemplateStr))
+	consumer.RuntimeObjects["wsContentChan"] = make(chan string)
 
 	//Websocket Endpoint Startup
-	http.HandleFunc("/dataSource", WSEndpointHandler)
-	http.HandleFunc(consumer.WSClientEndpoint, ClientHandler)
+	http.HandleFunc("/dataSource", WSEndpointClosure(consumer.RuntimeObjects["wsContentChan"].(chan string)))
+	http.HandleFunc(config["WSClientEndpoint"].(string), ClientHandlerClosure(consumer.RuntimeObjects["template"].(*template.Template), config["WSClientHost"].(string)))
 
-	go http.ListenAndServe(consumer.WSClientListenAddress, nil)
-	log.Println("Websocket Endpoint: started, listening at " + consumer.WSClientHost + consumer.WSClientEndpoint)
+	go http.ListenAndServe(config["WSClientListenAddress"].(string), nil)
+	log.Println("Websocket Endpoint: started, listening at " + config["WSClientHost"].(string) + config["WSClientEndpoint"].(string))
 
-	// Input Monitor Goroutine Startup
-	go monitorWebsocketConsumerInput(consumer)
-	log.Println("Websocket Consumer: started")
-	return consumer.inputChan
-}
-
-func monitorWebsocketConsumerInput(consumer *WebsocketConsumer) {
-	var incomingEvent events.Event
-
-	for {
-		select {
-		case <-consumer.done:
-			{
-				log.Println("monitorWebsocketProducerInput Terminated")
-				return
-			}
-		default:
-			incomingEvent = <-consumer.inputChan
-			wsContent <- fmt.Sprintf("%s:%s\n", incomingEvent.Type, incomingEvent.Payload.(string))
-
-		}
-	}
-
-}
-
-func WSEndpointHandler(w http.ResponseWriter, req *http.Request) {
-	wsConn, err := upgrader.Upgrade(w, req, nil)
-	if err != nil {
-		log.Println("Websocket Consumer: upgrade error:", err)
-		return
-	}
-	defer wsConn.Close()
-
-	for {
-
-		err = wsConn.WriteMessage(websocket.TextMessage, []byte(<-wsContent))
-		if err != nil {
-			log.Println("Websocket Consumer: write error:", err)
-			break
-		}
-	}
-}
-
-func ClientHandler(w http.ResponseWriter, req *http.Request) {
-	clientTemplate.Execute(w, "ws://"+host+"/dataSource")
 }

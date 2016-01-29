@@ -6,23 +6,15 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
 
-	"github.com/JKolios/goLcdEvents/conf"
-	"github.com/JKolios/goLcdEvents/events"
+	"github.com/JKolios/EventsToGo/events"
+	"github.com/JKolios/EventsToGo/producers"
+	"time"
 )
 
 const (
-	apiURL      = "http://api.wunderground.com/api/"
-	TICK_PERIOD = 60 * time.Second
+	apiURL = "http://api.wunderground.com/api/"
 )
-
-type WundergroundProducer struct {
-	token      string
-	location   string
-	outputChan chan<- events.Event
-	done       <-chan struct{}
-}
 
 type apiResponse struct {
 	Obs Observation `json:"current_observation"`
@@ -36,74 +28,53 @@ type Observation struct {
 
 var httpClient *http.Client = &http.Client{}
 
-func (producer *WundergroundProducer) Initialize(config conf.Configuration) {
-	producer.token = config.WundergroundApiToken
-	producer.location = config.WundergroundLocation
+func ProducerSetupFuction(producer *producers.GenericProducer, config map[string]interface{}) {
+	producer.RuntimeObjects["token"] = config["wundergroundApiToken"].(string)
+	producer.RuntimeObjects["location"] = config["wundergroundLocation"].(string)
 
 }
 
-func (producer *WundergroundProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
-
-	producer.outputChan = outputChan
-	producer.done = done
-
-	go pollWunderground(producer, TICK_PERIOD)
-	log.Println("Weather Underground Producer: started")
+func ProducerWaitFunction(producer *producers.GenericProducer) {
+	time.Sleep(30 * time.Second)
 }
 
-func pollWunderground(producer *WundergroundProducer, every time.Duration) {
-	tick := time.Tick(every)
-	for {
-		select {
-		case <-producer.done:
-			{
-				log.Println("pollWunderground Terminated")
-				return
-			}
-		default:
-			log.Println("Starting wunderground polling")
-			conditions := getCurrentConditions(producer.token, producer.location)
+func ProducerRunFuction(producer *producers.GenericProducer) events.Event {
 
-			finalMessage := fmt.Sprintf("%v Temp:%v Feels like:%v", conditions.Weather, conditions.Temp_c, conditions.Feelslike_c)
-			finalEvent := events.Event{finalMessage, "wunderground", time.Now(), events.PRIORITY_HIGH}
-
-			producer.outputChan <- finalEvent
-			log.Println("Wunderground polling done")
-			<-tick
-		}
-	}
+	eventPayload, eventPriority := getCurrentConditions(producer.RuntimeObjects)
+	return events.Event{eventPayload, producer.Name, time.Now(), eventPriority}
 }
 
-func getCurrentConditions(token, location string) Observation {
+func getCurrentConditions(config map[string]interface{}) (string, events.Priority) {
 
-	requestUrl := apiURL + token + "/conditions/q/" + location + ".json"
+	requestUrl := apiURL + config["token"].(string) + "/conditions/q/" + config["location"].(string) + ".json"
 	var responseStruct apiResponse
 
 	req, err := http.NewRequest("GET", requestUrl, nil)
 	if err != nil {
 		log.Println("Error constructing API request:" + err.Error())
-		return Observation{}
+		return "Wunderground Error", events.PRIORITY_LOW
 
 	}
-	req.Header.Add("Access-Token", token)
+	req.Header.Add("Access-Token", config["token"].(string))
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Println("Error sending API request:" + err.Error())
-		return Observation{}
+		return "Wunderground Error", events.PRIORITY_LOW
 	}
 	defer resp.Body.Close()
 
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading JSON response:" + err.Error())
-		return Observation{}
+		return "Wunderground Error", events.PRIORITY_LOW
 	}
 
 	err = json.Unmarshal(response, &responseStruct)
 	if err != nil {
 		log.Println("Error unmarshalling JSON response:" + err.Error())
-		return Observation{}
+		return "Wunderground Error", events.PRIORITY_LOW
 	}
 
-	return responseStruct.Obs
+	finalMessage := fmt.Sprintf("%v Temp:%v Feels like:%v", responseStruct.Obs.Weather, responseStruct.Obs.Temp_c, responseStruct.Obs.Feelslike_c)
+	return finalMessage, events.PRIORITY_LOW
 }

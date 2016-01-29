@@ -5,26 +5,26 @@ import (
 	"io/ioutil"
 )
 
-type Configuration struct {
-	Producers              []string `json:"Producers"`
-	Consumers              []string `json:"Consumers"`
-	Pinout                 []int    `json:"Pinout"`
-	Bmpi2c                 byte     `json:"Bmpi2c"`
-	PushbulletApiToken     string   `json:"pushbulletApiToken"`
-	WundergroundApiToken   string   `json:"wundergroundApiToken"`
-	WundergroundLocation   string   `json:"wundergroundLocation"`
-	BlPolarity             bool     `json:"BlPolarity"`
-	HTTPLogListenAddress   string   `json:"ListenAddress"`
-	HTTPLogEndpoint        string   `json:"Endpoint"`
-	BitcoinAverageCurrency string   `json:"BitcoinAverageCurrency"`
-	WSClientHost           string   `json:"WSClientHost"`
-	WSClientEndpoint       string   `json:"WSClientEndpoint"`
-	WSClientListenAddress  string   `json:"WSClientListenAddress"`
-}
+//type Configuration struct {
+//	Producers              []string `json:"Producers"`
+//	Consumers              []string `json:"Consumers"`
+//	Pinout                 []int    `json:"Pinout"`
+//	Bmpi2c                 byte     `json:"Bmpi2c"`
+//	PushbulletApiToken     string   `json:"pushbulletApiToken"`
+//	WundergroundApiToken   string   `json:"wundergroundApiToken"`
+//	WundergroundLocation   string   `json:"wundergroundLocation"`
+//	BlPolarity             bool     `json:"BlPolarity"`
+//	HTTPLogListenAddress   string   `json:"ListenAddress"`
+//	HTTPLogEndpoint        string   `json:"Endpoint"`
+//	BitcoinAverageCurrency string   `json:"BitcoinAverageCurrency"`
+//	WSClientHost           string   `json:"WSClientHost"`
+//	WSClientEndpoint       string   `json:"WSClientEndpoint"`
+//	WSClientListenAddress  string   `json:"WSClientListenAddress"`
+//}
 
-func ParseJSONFile(filename string) (Configuration, error) {
+func ParseJSONFile(filename string) (map[string]interface{}, error) {
 
-	var confObject Configuration
+	var confObject map[string]interface{} = make(map[string]interface{})
 	confFile, err := ioutil.ReadFile(filename)
 
 	err = json.Unmarshal(confFile, &confObject)

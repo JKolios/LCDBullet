@@ -6,22 +6,15 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
 
-	"github.com/JKolios/goLcdEvents/conf"
-	"github.com/JKolios/goLcdEvents/events"
+	"github.com/JKolios/EventsToGo/events"
+	"github.com/JKolios/EventsToGo/producers"
+	"time"
 )
 
 const (
-	API_URL     = "https://api.bitcoinaverage.com/ticker/global/"
-	TICK_PERIOD = 30 * time.Second
+	API_URL = "https://api.bitcoinaverage.com/ticker/global/"
 )
-
-type BitcoinAverageProducer struct {
-	currencySymbol string
-	outputChan     chan<- events.Event
-	done           <-chan struct{}
-}
 
 type apiResponse struct {
 	Ask    float32 `json:"ask"`
@@ -30,74 +23,53 @@ type apiResponse struct {
 	Avg24h float32 `json:"24h_avg"`
 }
 
-var httpClient *http.Client = &http.Client{}
+type BitcoinAverageProducer struct {
+	producers.GenericProducer
+	requestEndpoint string
+}
 
-func (producer *BitcoinAverageProducer) Initialize(config conf.Configuration) {
-	producer.currencySymbol = config.BitcoinAverageCurrency
+func ProducerSetupFuction(producer *producers.GenericProducer, config map[string]interface{}) {
+	producer.RuntimeObjects["requestEndpoint"] = API_URL + config["BitcoinAverageCurrency"].(string)
 
 }
 
-func (producer *BitcoinAverageProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
-
-	producer.outputChan = outputChan
-	producer.done = done
-	go pollBitcoinAverage(producer, TICK_PERIOD)
-	log.Println("Bitcoin Average Producer: started")
+func ProducerWaitFunction(producer *producers.GenericProducer) {
+	time.Sleep(10 * time.Second)
 }
 
-func pollBitcoinAverage(producer *BitcoinAverageProducer, every time.Duration) {
-	tick := time.Tick(every)
-	for {
-		select {
-		case <-producer.done:
-			{
-				log.Println("pollBitcoinAverage Terminated")
-				return
-			}
-		default:
-			log.Println("Starting bitcoinaverage polling")
-			averages := getCurrentBTCAverages(producer.currencySymbol)
+func ProducerRunFuction(producer *producers.GenericProducer) events.Event {
 
-			finalMessage := fmt.Sprintf("Bitcoin Global Average: Ask: %v Bid:%v Last:%v 24H Average: %v", averages.Ask, averages.Bid, averages.Last, averages.Avg24h)
-			finalEvent := events.Event{finalMessage, "bitcoinaverage", time.Now(), events.PRIORITY_LOW}
-
-			producer.outputChan <- finalEvent
-			log.Println("Bitcoinaverage polling done")
-			<-tick
-		}
-	}
-}
-
-func getCurrentBTCAverages(currencySymbol string) apiResponse {
-
-	requestUrl := API_URL + currencySymbol
 	var responseStruct apiResponse
 
-	req, err := http.NewRequest("GET", requestUrl, nil)
+	req, err := http.NewRequest("GET", producer.RuntimeObjects["requestEndpoint"].(string), nil)
 	if err != nil {
 		log.Println("Error constructing API request:" + err.Error())
-		return apiResponse{}
+		return events.Event{}
 
 	}
 
+	httpClient := &http.Client{}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Println("Error sending API request:" + err.Error())
-		return apiResponse{}
+		return events.Event{}
 	}
 	defer resp.Body.Close()
 
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading JSON response:" + err.Error())
-		return apiResponse{}
+		return events.Event{}
 	}
 
 	err = json.Unmarshal(response, &responseStruct)
 	if err != nil {
 		log.Println("Error unmarshalling JSON response:" + err.Error())
-		return apiResponse{}
+		return events.Event{}
 	}
 
-	return responseStruct
+	finalMessage := fmt.Sprintf("Bitcoin Global Average: Ask: %v Bid:%v Last:%v 24H Average: %v", responseStruct.Ask, responseStruct.Bid, responseStruct.Last, responseStruct.Avg24h)
+
+	return events.Event{finalMessage, producer.Name, time.Now(), events.PRIORITY_LOW}
+
 }

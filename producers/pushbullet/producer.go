@@ -2,11 +2,10 @@ package pushbullet
 
 import (
 	"log"
-	"net/http"
 	"time"
 
-	"github.com/JKolios/goLcdEvents/conf"
-	"github.com/JKolios/goLcdEvents/events"
+	"github.com/JKolios/EventsToGo/events"
+	"github.com/JKolios/EventsToGo/producers"
 	"github.com/gorilla/websocket"
 )
 
@@ -18,8 +17,6 @@ const (
 type PushbulletProducer struct {
 	connection *websocket.Conn
 	token      string
-	outputChan chan<- events.Event
-	done       <-chan struct{}
 }
 
 type wsMessage struct {
@@ -27,90 +24,61 @@ type wsMessage struct {
 	Subtype string `json:"subtype"`
 }
 
-func (producer *PushbulletProducer) Initialize(config conf.Configuration) {
-	producer.token = config.PushbulletApiToken
-
-}
-
-func (producer *PushbulletProducer) Start(done <-chan struct{}, outputChan chan<- events.Event) {
-
-	dialer := websocket.Dialer{}
-	wsHeaders := http.Header{
-		"Origin":                   {"http://jsone.system-ns.net"},
-		"Sec-WebSocket-Extensions": {"permessage-deflate; client_max_window_bits, x-webkit-deflate-frame"},
-	}
-
-	wsConnection, _, err := dialer.Dial(wsURI+producer.token, wsHeaders)
-	if err != nil {
-		log.Fatal("PushbulletProducer :Error opening websocket connection:" + err.Error())
-	}
-	log.Println("PushbulletProducer: Websocket connection appears to be up, monitoring")
-	producer.connection = wsConnection
-	producer.outputChan = outputChan
-	producer.done = done
-	go pushbulletMonitor(producer)
-	log.Println("Pushbullet Producer: started")
-}
-
-func pushbulletMonitor(producer *PushbulletProducer) {
-	//set up the message pump
-	wsMessageChannel := make(chan wsMessage)
-	lastcheckTimestamp := float64(time.Now().Unix())
-	go wsMessagePump(producer.done, producer.connection, wsMessageChannel)
-	for {
-
-		select {
-		case <-producer.done:
-			{
-				log.Println("pushbulletMonitor Terminated")
-				return
-			}
-		case message := <-wsMessageChannel:
-			{
-				log.Printf("Received JSON Message:Content %v\n", message)
-				if message.Type == "tickle" {
-
-					log.Println("Got a tickle push, fetching body/bodies...")
-					ListPushesResponse := getPushesSince(lastcheckTimestamp, producer.token)
-
-					for _, push := range ListPushesResponse.Pushes {
-
-						pushEvent := events.Event{push.Body, "pushbullet", time.Now(), events.PRIORITY_HIGH}
-						producer.outputChan <- pushEvent
-						lastcheckTimestamp = push.Modified
-
-					}
-
-				} else if message.Type == "push" {
-					log.Println("Got an ephemeral push, data:")
-					log.Println(message)
-
-				} else {
-					log.Println("Got a nop message, ignoring")
-				}
-			}
-
-		}
-	}
-}
-
-func wsMessagePump(done <-chan struct{}, conn *websocket.Conn, messageChannel chan wsMessage) {
+func wsMessagePump(producer *producers.GenericProducer) {
 	message := wsMessage{}
 	for {
-		select {
-		case <-done:
-			{
-				log.Println("Message Pembdump Terminated")
-				conn.Close()
-				return
-			}
-		default:
-			err := conn.ReadJSON(&message)
-			// log.Println("Parsing message")
-			if err != nil {
-				log.Println("Error while parsing message" + err.Error())
-			}
-			messageChannel <- message
+		err := producer.RuntimeObjects["connection"].(*websocket.Conn).ReadJSON(&message)
+		if err != nil {
+			log.Println("Error while parsing message" + err.Error())
+		}
+
+		producer.RuntimeObjects["wsMessageChannel"].(chan wsMessage) <- message
+	}
+}
+
+func ProducerSetupFuction(producer *producers.GenericProducer, config map[string]interface{}) {
+
+	dialer := websocket.Dialer{}
+
+	wsConnection, _, err := dialer.Dial(wsURI+config["PushbulletApiToken"].(string), nil)
+	if err != nil {
+		log.Fatal("PushbulletProducer: Error opening websocket connection:" + err.Error())
+	}
+
+	producer.RuntimeObjects["PushbulletApiToken"] = config["PushbulletApiToken"].(string)
+	producer.RuntimeObjects["connection"] = wsConnection
+	producer.RuntimeObjects["wsMessageChannel"] = make(chan wsMessage)
+	producer.RuntimeObjects["lastcheckTimestamp"] = float64(time.Now().Unix())
+
+	go wsMessagePump(producer)
+
+}
+
+func ProducerWaitFunction(producer *producers.GenericProducer) {
+	for {
+		message := <-producer.RuntimeObjects["wsMessageChannel"].(chan wsMessage)
+
+		if message.Type == "tickle" {
+			return
+
 		}
 	}
+}
+
+func ProducerRunFuction(producer *producers.GenericProducer) events.Event {
+
+	ListPushesResponse := getPushesSince(producer.RuntimeObjects["lastcheckTimestamp"].(float64), producer.RuntimeObjects["PushbulletApiToken"].(string))
+	producer.RuntimeObjects["lastcheckTimestamp"] = ListPushesResponse.Pushes[0].Modified
+
+	pushbulletUpdates := "Pushbullet updates: "
+	for _, push := range ListPushesResponse.Pushes {
+		pushbulletUpdates += push.Body + " "
+	}
+
+	pushEvent := events.Event{pushbulletUpdates, "pushbullet", time.Now(), events.PRIORITY_HIGH}
+	return pushEvent
+}
+
+func ProducerStopFunction(producer *producers.GenericProducer) {
+	producer.RuntimeObjects["connection"].(*websocket.Conn).Close()
 }
