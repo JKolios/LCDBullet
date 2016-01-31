@@ -44,7 +44,7 @@ func ProducerRunFuction(producer *producers.GenericProducer) events.Event {
 	return events.Event{eventPayload, producer.Name, time.Now(), eventPriority}
 }
 
-func getCurrentConditions(config map[string]interface{}) (string, events.Priority) {
+func getCurrentConditions(config map[string]interface{}) (string, int) {
 
 	requestUrl := apiURL + config["token"].(string) + "/conditions/q/" + config["location"].(string) + ".json"
 	var responseStruct apiResponse

@@ -16,6 +16,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 )
 
 func main() {
@@ -24,7 +25,8 @@ func main() {
 		log.Fatalln("Error while parsing config: " + err.Error())
 	}
 
-	eventQueue := EventsToGo.NewQueue()
+	eventTTL := time.Minute * 5
+	eventQueue := EventsToGo.NewQueue(&eventTTL)
 
 	if utils.SliceContainsString(config["consumers"].([]interface{}), "lcd") {
 		lcdClientConsumer := consumers.NewGenericConsumer("lcd", config)
